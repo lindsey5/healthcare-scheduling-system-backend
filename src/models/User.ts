@@ -2,7 +2,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/db";
 import { hashPassword } from "../utils/auth";
 
-interface PatientAttributes {
+interface UserAttributes {
     id: number;
     firstname: string;
     lastname: string;
@@ -16,34 +16,27 @@ interface PatientAttributes {
     createdAt: Date;
 }
 
-interface PatientCreationAttributes
+interface UserCreationAttributes
     extends Optional<
-        PatientAttributes,
-        | "id"
-        | "createdAt"
-        | "verificationCode"
-        | "verificationCodeExpiresAt"
-        | "isVerified"
+        UserAttributes,
+        "id"
     > {}
 
-class Patient
-    extends Model<PatientAttributes, PatientCreationAttributes>
-    implements PatientAttributes
-{
-    public id!: number;
-    public firstname!: string;
-    public lastname!: string;
-    public email!: string;
-    public password!: string;
+class User extends Model<UserAttributes, UserCreationAttributes> {
+    declare id: number;
+    declare firstname: string;
+    declare lastname: string;
+    declare email: string;
+    declare password: string;
 
-    public verificationCode!: string | null;
-    public verificationCodeExpiresAt!: Date | null;
-    public isVerified!: boolean;
+    declare verificationCode: string | null;
+    declare verificationCodeExpiresAt: Date | null;
+    declare isVerified: boolean;
 
-    public createdAt!: Date;
+    declare createdAt: Date;
 }
 
-Patient.init(
+User.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -100,24 +93,24 @@ Patient.init(
     },
     {
         sequelize,
-        modelName: "Patient",
-        tableName: "patients",
+        modelName: "User",
+        tableName: "users",
         timestamps: false,
 
         hooks: {
-            beforeCreate: async (patient) => {
-                if (patient.password) {
-                    patient.password = await hashPassword(patient.password);
+            beforeCreate: async (user) => {
+                if (user.password) {
+                    user.password = await hashPassword(user.password);
                 }
             },
 
-            beforeUpdate: async (patient) => {
-                if (patient.changed("password")) {
-                    patient.password = await hashPassword(patient.password);
+            beforeUpdate: async (user) => {
+                if (user.changed("password")) {
+                    user.password = await hashPassword(user.password);
                 }
             },
         },
     }
 );
 
-export default Patient;
+export default User;

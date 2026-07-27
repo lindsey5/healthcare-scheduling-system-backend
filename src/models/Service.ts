@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional } from "sequelize";
-import { sequelize } from "../../config/db";
+import { sequelize } from "../config/db";
 
 interface ServiceAttributes {
     id: number;
@@ -25,9 +25,11 @@ class Service
     extends Model<ServiceAttributes, ServiceCreationAttributes>
     implements ServiceAttributes
 {
-    public id!: number;
-    public serviceName!: string;
-    public dayOfWeek!:
+    declare id: number;
+
+    declare serviceName: string;
+
+    declare dayOfWeek:
         | "Monday"
         | "Tuesday"
         | "Wednesday"
@@ -36,11 +38,11 @@ class Service
         | "Saturday"
         | "Sunday";
 
-    public startTime!: string;
-    public endTime!: string;
-    public slotCapacityPerHour!: number;
+    declare startTime: string;
+    declare endTime: string;
+    declare slotCapacityPerHour: number;
 
-    public createdAt!: Date;
+    declare createdAt: Date;
 }
 
 Service.init(

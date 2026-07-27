@@ -1,21 +1,20 @@
 import { Router } from "express";
-import { loginPatient, registerPatient, verifyPatient } from "../controllers/patientController";
-
+import { registerUser, loginUser, verifyUser } from "../controllers/userController";
 const router = Router();
 
 router.post(
-    '/',
-    registerPatient
+    '/register',
+    registerUser
 )
 
 router.post(
     '/verify',
-    verifyPatient
+    verifyUser
 )
 
 router.post(
     '/login',
-    loginPatient
+    loginUser
 )
 
 const patientRoutes = router;
