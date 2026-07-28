@@ -2,7 +2,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/db";
 
 interface AppointmentAttributes {
-    id: number;
+    id: string;
 
     patientId: number;
     serviceId: number;
@@ -38,7 +38,7 @@ class Appointment
     >
     implements AppointmentAttributes
 {
-    declare id: number;
+    declare id: string;
 
     declare patientId: number;
     declare serviceId: number;
@@ -64,9 +64,9 @@ class Appointment
 Appointment.init(
     {
         id: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
-            autoIncrement: true,
             allowNull: false,
         },
 

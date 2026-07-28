@@ -3,17 +3,21 @@ import { sequelize } from "../config/db";
 
 interface AppointmentRecordAttributes {
     id: number;
-    appointmentId: number;
+    appointmentId: string;
+
     firstName: string;
     middleName: string | null;
     lastName: string;
     suffix: string | null;
+
     birthDate: Date;
     gender: "Male" | "Female";
     civilStatus: "Single" | "Married" | "Widowed" | "Separated";
+
     contactNumber: string;
     email: string | null;
     completeAddress: string;
+
     emergencyContactPerson: string | null;
     emergencyContactNumber: string | null;
 }
@@ -24,6 +28,7 @@ interface AppointmentRecordCreationAttributes
         | "id"
         | "middleName"
         | "suffix"
+        | "email"
         | "emergencyContactPerson"
         | "emergencyContactNumber"
     > {}
@@ -33,17 +38,21 @@ class AppointmentRecord extends Model<
     AppointmentRecordCreationAttributes
 > {
     declare id: number;
-    declare appointmentId: number;
+    declare appointmentId: string;
+
     declare firstName: string;
     declare middleName: string | null;
     declare lastName: string;
     declare suffix: string | null;
+
     declare birthDate: Date;
     declare gender: "Male" | "Female";
     declare civilStatus: "Single" | "Married" | "Widowed" | "Separated";
+
     declare contactNumber: string;
     declare email: string | null;
     declare completeAddress: string;
+
     declare emergencyContactPerson: string | null;
     declare emergencyContactNumber: string | null;
 }
@@ -58,7 +67,7 @@ AppointmentRecord.init(
         },
 
         appointmentId: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.UUID,
             allowNull: false,
         },
 
