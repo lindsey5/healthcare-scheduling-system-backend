@@ -14,7 +14,6 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             appointmentId: appointment.id
         });
         
-
         res.status(200).json({
             appointment: {
                 ...appointment.toJSON(),
