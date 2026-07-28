@@ -124,7 +124,7 @@ export const verifyPatient = async (
             isVerified: true,
         });
 
-        const refreshToken = generateRefreshToken(patient.id);
+        const refreshToken = generateRefreshToken(patient.id, "patient");
         const accessToken = generateAccessToken(patient.id, "patient");
 
         return res.status(200).json({
@@ -178,7 +178,7 @@ export const loginPatient = async (
             });
         }
 
-        const refreshToken = generateRefreshToken(patient.id);
+        const refreshToken = generateRefreshToken(patient.id, "patient");
         const accessToken = generateAccessToken(patient.id, "patient");
 
         return res.status(200).json({

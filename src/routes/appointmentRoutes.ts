@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createAppointment } from "../controllers/appointmentController";
+import { createAppointment, getMyAppointments } from "../controllers/appointmentController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -10,6 +10,13 @@ router.post(
     authorize("patient"),
     createAppointment
 );
+
+router.get(
+    "/me",
+    authenticate,
+    authorize("patient"),
+    getMyAppointments
+)
 
 const appointmentRoutes = router;
 

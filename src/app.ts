@@ -6,6 +6,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import serviceRoutes from "./routes/serviceRoutes";
 import doctorRoutes from "./routes/doctorRoutes";
 import appointmentRoutes from "./routes/appointmentRoutes";
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/doctors', doctorRoutes);

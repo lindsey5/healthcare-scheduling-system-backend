@@ -1,8 +1,10 @@
+import { randomUUID } from "crypto";
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/db";
 
 interface AppointmentAttributes {
     id: string;
+    referenceNumber: string;
 
     patientId: number;
     serviceId: number;
@@ -20,7 +22,7 @@ interface AppointmentAttributes {
         | "No Show"
         | "Rescheduled";
 
-    purposeOfVisit: string | null;
+    purposeOfVisit: string;
 
     createdAt: Date;
 }
@@ -28,7 +30,11 @@ interface AppointmentAttributes {
 interface AppointmentCreationAttributes
     extends Optional<
         AppointmentAttributes,
-        "id" | "status" | "createdAt" | "purposeOfVisit"
+        | "id"
+        | "referenceNumber"
+        | "status"
+        | "createdAt"
+        | "purposeOfVisit"
     > {}
 
 class Appointment
@@ -39,6 +45,7 @@ class Appointment
     implements AppointmentAttributes
 {
     declare id: string;
+    declare referenceNumber: string;
 
     declare patientId: number;
     declare serviceId: number;
@@ -56,7 +63,7 @@ class Appointment
         | "No Show"
         | "Rescheduled";
 
-    declare purposeOfVisit: string | null;
+    declare purposeOfVisit: string;
 
     declare createdAt: Date;
 }
@@ -68,6 +75,12 @@ Appointment.init(
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
             allowNull: false,
+        },
+
+        referenceNumber: {
+            type: DataTypes.STRING(30),
+            allowNull: false,
+            unique: true,
         },
 
         patientId: {
@@ -111,7 +124,7 @@ Appointment.init(
 
         purposeOfVisit: {
             type: DataTypes.TEXT,
-            allowNull: true,
+            allowNull: false,
         },
 
         createdAt: {
@@ -125,6 +138,27 @@ Appointment.init(
         modelName: "Appointment",
         tableName: "appointments",
         timestamps: false,
+
+        hooks: {
+            beforeValidate: (appointment) => {
+                if (!appointment.referenceNumber) {
+                    const now = new Date();
+
+                    const date =
+                        now.getFullYear().toString() +
+                        String(now.getMonth() + 1).padStart(2, "0") +
+                        String(now.getDate()).padStart(2, "0");
+
+                    // Example: APP-20260729-A1B2C3D4
+                    const unique = randomUUID()
+                        .replace(/-/g, "")
+                        .substring(0, 8)
+                        .toUpperCase();
+
+                    appointment.referenceNumber = `APP-${date}-${unique}`;
+                }
+            },
+        },
     }
 );
 

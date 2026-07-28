@@ -27,13 +27,13 @@ export const generateAccessToken = (user_id : number, role : string): string => 
 };
 
 // Generate JWT Refresh Token
-export const generateRefreshToken = (user_id: number): string => {
+export const generateRefreshToken = (user_id: number, role: string): string => {
   if (!process.env.JWT_REFRESH_SECRET || !process.env.JWT_REFRESH_EXPIRES_IN) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
 
   return jwt.sign(
-    { id: user_id },
+    { id: user_id, role },
     process.env.JWT_REFRESH_SECRET as string,
     {
       expiresIn: process.env.JWT_REFRESH_EXPIRES_IN, 

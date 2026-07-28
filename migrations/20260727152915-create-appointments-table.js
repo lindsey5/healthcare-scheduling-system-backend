@@ -11,11 +11,17 @@ module.exports = {
                 allowNull: false,
             },
 
+            referenceNumber: {
+                type: Sequelize.STRING(30),
+                allowNull: false,
+                unique: true,
+            },
+
             patientId: {
                 type: Sequelize.INTEGER,
                 references: {
-                  model: "patients",
-                  key: "id",
+                    model: "patients",
+                    key: "id",
                 },
                 onUpdate: "CASCADE",
                 onDelete: "CASCADE",
@@ -77,5 +83,12 @@ module.exports = {
 
     async down(queryInterface) {
         await queryInterface.dropTable("appointments");
+
+        // PostgreSQL only
+        if (queryInterface.sequelize.getDialect() === "postgres") {
+            await queryInterface.sequelize.query(
+                'DROP TYPE IF EXISTS "enum_appointments_status";'
+            );
+        }
     },
 };
