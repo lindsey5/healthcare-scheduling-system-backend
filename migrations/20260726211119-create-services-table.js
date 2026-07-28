@@ -23,8 +23,6 @@ module.exports = {
                     "Wednesday",
                     "Thursday",
                     "Friday",
-                    "Saturday",
-                    "Sunday"
                 ),
                 allowNull: false,
             },
@@ -39,10 +37,11 @@ module.exports = {
                 allowNull: false,
             },
 
-            slotCapacityPerHour: {
+            duration: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
-                defaultValue: 10,
+                defaultValue: 30,
+                comment: "Duration in minutes",
             },
 
             createdAt: {
@@ -57,8 +56,8 @@ module.exports = {
         await queryInterface.dropTable("services");
 
         // Required for MySQL to remove the ENUM type cleanly
-        await queryInterface.sequelize.query(
-            "DROP TYPE IF EXISTS enum_services_dayOfWeek;"
-        ).catch(() => {});
+        await queryInterface.sequelize
+            .query("DROP TYPE IF EXISTS enum_services_dayOfWeek;")
+            .catch(() => {});
     },
 };

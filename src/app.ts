@@ -1,7 +1,10 @@
 import express from "express";
 import cors from 'cors';
 import morgan from 'morgan';
-import userRoutes from "./routes/userRoutes";
+import patientRoutes from "./routes/patientRoutes";
+import { errorHandler } from "./middlewares/errorHandler";
+import serviceRoutes from "./routes/serviceRoutes";
+import doctorRoutes from "./routes/doctorRoutes";
 
 const app = express();
 
@@ -16,6 +19,9 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.use('/api/users', userRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/doctors', doctorRoutes);
+app.use(errorHandler);
 
 export default app;

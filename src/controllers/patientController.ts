@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import User from "../models/User";
+import { Patient } from '../models/index';
 import { sendVerificationCode } from "../services/emailService";
 import {
     generateAccessToken,
@@ -7,13 +7,13 @@ import {
     verifyPassword,
 } from "../utils/auth";
 
-export const registerUser = async (
+export const registerPatient = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
     try {
-        const isExisting = await User.findOne({
+        const isExisting = await Patient.findOne({
             where: {
                 email: req.body.email,
             },
@@ -21,8 +21,8 @@ export const registerUser = async (
 
         if (
             isExisting &&
-            (!isExisting.get('verificationCode') ||
-                !isExisting.get('verificationCodeExpiresAt')) &&
+            (!isExisting.verificationCode ||
+                !isExisting.verificationCodeExpiresAt) &&
             isExisting.isVerified
         ) {
             return res.status(409).json({
@@ -42,7 +42,7 @@ export const registerUser = async (
         const { expiresAt, verificationCode } = verification;
 
         if (isExisting) {
-            await User.update(
+            await Patient.update(
                 {
                     verificationCode,
                     verificationCodeExpiresAt: expiresAt,
@@ -54,7 +54,7 @@ export const registerUser = async (
                 }
             );
         } else {
-            await User.create({
+            await Patient.create({
                 ...req.body,
                 verificationCode,
                 verificationCodeExpiresAt: expiresAt,
@@ -62,15 +62,16 @@ export const registerUser = async (
         }
 
         return res.status(201).json({
-            message:
-                "A verification code has been sent to your email.",
+            message: "A verification code has been sent to your email.",
         });
+
     } catch (err) {
         next(err);
     }
 };
 
-export const verifyUser = async (
+
+export const verifyPatient = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -78,21 +79,22 @@ export const verifyUser = async (
     try {
         const { email, verificationCode } = req.body;
 
-        const user = await User.findOne({
+        const patient = await Patient.findOne({
             where: {
                 email,
             },
         });
 
-        if (!user) {
+        if (!patient) {
             return res.status(404).json({
                 message: "No account was found with the provided email address.",
             });
         }
 
         if (
-            (!user.verificationCode || !user.verificationCodeExpiresAt) &&
-            user.isVerified
+            (!patient.verificationCode ||
+                !patient.verificationCodeExpiresAt) &&
+            patient.isVerified
         ) {
             return res.status(400).json({
                 message: "This email is already verified",
@@ -100,8 +102,8 @@ export const verifyUser = async (
         }
 
         if (
-            user.verificationCodeExpiresAt &&
-            user.verificationCodeExpiresAt < new Date()
+            patient.verificationCodeExpiresAt &&
+            patient.verificationCodeExpiresAt < new Date()
         ) {
             return res.status(400).json({
                 message:
@@ -109,28 +111,45 @@ export const verifyUser = async (
             });
         }
 
-        if (verificationCode !== user.verificationCode) {
+        if (verificationCode !== patient.verificationCode) {
             return res.status(400).json({
                 message:
                     "The verification code you entered is incorrect.",
             });
         }
 
-        await user.update({
+        await patient.update({
             verificationCode: null,
             verificationCodeExpiresAt: null,
             isVerified: true,
         });
 
+        const refreshToken = generateRefreshToken(patient.id);
+        const accessToken = generateAccessToken(patient.id, "patient");
+
         return res.status(200).json({
-            message:"Account successfully created.",
+            user: {
+                id: patient.id,
+                firstname: patient.firstname,
+                lastname: patient.lastname,
+                email: patient.email,
+                createdAt: patient.createdAt,
+                role: 'patient'
+            },
+            token: {
+                refreshToken,
+                accessToken,
+            },
+            message: "Account successfully created.",
         });
+
     } catch (err) {
         next(err);
     }
 };
 
-export const loginUser = async (
+
+export const loginPatient = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -138,20 +157,20 @@ export const loginUser = async (
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({
+        const patient = await Patient.findOne({
             where: {
                 email,
                 isVerified: true,
             },
         });
 
-        if (!user) {
+        if (!patient) {
             return res.status(404).json({
                 message: "Account not found",
             });
         }
 
-        const isMatch = await verifyPassword(password, user.password);
+        const isMatch = await verifyPassword(password, patient.password);
 
         if (!isMatch) {
             return res.status(401).json({
@@ -159,21 +178,24 @@ export const loginUser = async (
             });
         }
 
-        const refreshToken = generateRefreshToken(user.id);
-        const accessToken = generateAccessToken(user.id, "user");
+        const refreshToken = generateRefreshToken(patient.id);
+        const accessToken = generateAccessToken(patient.id, "patient");
 
         return res.status(200).json({
             user: {
-                firstname: user.firstname,
-                lastname: user.lastname,
-                email: user.email,
-                createdAt: user.createdAt
+                id: patient.id,
+                firstname: patient.firstname,
+                lastname: patient.lastname,
+                email: patient.email,
+                createdAt: patient.createdAt,
+                role: 'patient'
             },
             token: {
                 refreshToken,
                 accessToken,
-            }
+            },
         });
+
     } catch (err) {
         next(err);
     }

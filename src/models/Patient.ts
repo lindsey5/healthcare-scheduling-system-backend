@@ -2,7 +2,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/db";
 import { hashPassword } from "../utils/auth";
 
-interface UserAttributes {
+interface PatientAttributes {
     id: number;
     firstname: string;
     lastname: string;
@@ -16,13 +16,13 @@ interface UserAttributes {
     createdAt: Date;
 }
 
-interface UserCreationAttributes
+interface PatientCreationAttributes
     extends Optional<
-        UserAttributes,
+        PatientAttributes,
         "id"
     > {}
 
-class User extends Model<UserAttributes, UserCreationAttributes> {
+class Patient extends Model<PatientAttributes, PatientCreationAttributes> {
     declare id: number;
     declare firstname: string;
     declare lastname: string;
@@ -36,7 +36,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> {
     declare createdAt: Date;
 }
 
-User.init(
+Patient.init(
     {
         id: {
             type: DataTypes.INTEGER,
@@ -93,24 +93,24 @@ User.init(
     },
     {
         sequelize,
-        modelName: "User",
-        tableName: "users",
+        modelName: "Patient",
+        tableName: "patients",
         timestamps: false,
 
         hooks: {
-            beforeCreate: async (user) => {
-                if (user.password) {
-                    user.password = await hashPassword(user.password);
+            beforeCreate: async (patient) => {
+                if (patient.password) {
+                    patient.password = await hashPassword(patient.password);
                 }
             },
 
-            beforeUpdate: async (user) => {
-                if (user.changed("password")) {
-                    user.password = await hashPassword(user.password);
+            beforeUpdate: async (patient) => {
+                if (patient.changed("password")) {
+                    patient.password = await hashPassword(patient.password);
                 }
             },
         },
     }
 );
 
-export default User;
+export default Patient;

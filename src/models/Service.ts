@@ -10,11 +10,9 @@ interface ServiceAttributes {
         | "Wednesday"
         | "Thursday"
         | "Friday"
-        | "Saturday"
-        | "Sunday";
     startTime: string;
     endTime: string;
-    slotCapacityPerHour: number;
+    duration: number; // Duration in minutes
     createdAt: Date;
 }
 
@@ -35,12 +33,10 @@ class Service
         | "Wednesday"
         | "Thursday"
         | "Friday"
-        | "Saturday"
-        | "Sunday";
 
     declare startTime: string;
     declare endTime: string;
-    declare slotCapacityPerHour: number;
+    declare duration: number;
 
     declare createdAt: Date;
 }
@@ -53,10 +49,12 @@ Service.init(
             autoIncrement: true,
             allowNull: false,
         },
+
         serviceName: {
             type: DataTypes.STRING,
             allowNull: false,
         },
+
         dayOfWeek: {
             type: DataTypes.ENUM(
                 "Monday",
@@ -64,27 +62,30 @@ Service.init(
                 "Wednesday",
                 "Thursday",
                 "Friday",
-                "Saturday",
-                "Sunday"
             ),
             allowNull: false,
         },
+
         startTime: {
             type: DataTypes.TIME,
             allowNull: false,
         },
+
         endTime: {
             type: DataTypes.TIME,
             allowNull: false,
         },
-        slotCapacityPerHour: {
+
+        duration: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            defaultValue: 10,
+            defaultValue: 30,
+            comment: "Duration in minutes",
             validate: {
-                min: 1,
+                min: 5,
             },
         },
+
         createdAt: {
             type: DataTypes.DATE,
             allowNull: false,
