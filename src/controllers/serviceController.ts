@@ -125,45 +125,95 @@ export const getAvailableTimeSlot = async (
             });
         }
 
+        // Get current Manila date
+        const manilaNow = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        );
+
+        const today = new Date(
+            manilaNow.getFullYear(),
+            manilaNow.getMonth(),
+            manilaNow.getDate()
+        );
+
+        // Convert appointment date to date only
+        const selectedDate = new Date(appointmentDate);
+        const selectedDay = new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate()
+        );
+
+        // Hide past dates
+        if (selectedDay < today) {
+            return res.status(200).json({
+                availableTimes: [],
+            });
+        }
+
+        const dayOfWeek = selectedDate.toLocaleDateString("en-US", {
+            weekday: "long",
+        });
+
+        if (service.dayOfWeek !== dayOfWeek) {
+            return res.status(200).json({
+                availableTimes: [],
+            });
+        }
+
         const appointments = await Appointment.findAll({
             where: {
                 serviceId: id,
                 appointmentDate,
             },
-            order: [["startTime", "ASC"]],
+            order: [["appointmentTime", "ASC"]],
         });
 
-        const booked = new Set(
-            appointments.map(
-                (a) => `${a.startTime}-${a.endTime}`
-            )
+        const bookedTimes = new Set(
+            appointments.map((a) => a.appointmentTime)
         );
 
-        const slots = [];
+        const slots: string[] = [];
 
         const current = new Date(`1970-01-01T${service.startTime}`);
         const end = new Date(`1970-01-01T${service.endTime}`);
 
-        while (current < end) {
-            const slotStart = current.toTimeString().slice(0, 8);
+        // Check if selected date is today
+        const isToday =
+            selectedDay.getTime() === today.getTime();
 
-            current.setMinutes(current.getMinutes() + service.duration);
+        const currentManilaTime = manilaNow
+            .toTimeString()
+            .slice(0, 8);
 
-            if (current > end) break;
+        while (current <= end) {
+            const slotStart = current
+                .toTimeString()
+                .slice(0, 8);
 
-            const slotEnd = current.toTimeString().slice(0, 8);
-
-            const key = `${slotStart}-${slotEnd}`;
-
-            if (!booked.has(key)) {
-                slots.push({
-                    startTime: slotStart,
-                    endTime: slotEnd,
-                });
+            // Remove past slots if appointment is today
+            if (isToday && slotStart <= currentManilaTime) {
+                current.setMinutes(
+                    current.getMinutes() + service.duration
+                );
+                continue;
             }
+
+            if (!bookedTimes.has(slotStart)) {
+                slots.push(slotStart);
+            }
+
+            current.setMinutes(
+                current.getMinutes() + service.duration
+            );
         }
 
-        return res.status(200).json({ availableTimes: slots });
+        return res.status(200).json({
+            availableTimes: slots,
+        });
+
     } catch (err) {
         next(err);
     }

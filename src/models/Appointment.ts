@@ -9,18 +9,18 @@ interface AppointmentAttributes {
     doctorId: number;
 
     appointmentDate: Date;
-    startTime: string;
-    endTime: string;
+    appointmentTime: string;
 
     status:
-        "Pending" |
-        "Checked In" |
-        "Completed" |
-        "Cancelled" |
-        "No Show" |
-        "Rescheduled"
+        | "Pending"
+        | "Approved"
+        | "Checked In"
+        | "Completed"
+        | "Cancelled"
+        | "No Show"
+        | "Rescheduled";
 
-    purposeOfVisit: string;
+    purposeOfVisit: string | null;
 
     createdAt: Date;
 }
@@ -28,7 +28,7 @@ interface AppointmentAttributes {
 interface AppointmentCreationAttributes
     extends Optional<
         AppointmentAttributes,
-        "id" | "status" | "createdAt"
+        "id" | "status" | "createdAt" | "purposeOfVisit"
     > {}
 
 class Appointment
@@ -45,18 +45,18 @@ class Appointment
     declare doctorId: number;
 
     declare appointmentDate: Date;
-    declare startTime: string;
-    declare endTime: string;
+    declare appointmentTime: string;
 
     declare status:
         | "Pending"
+        | "Approved"
         | "Checked In"
         | "Completed"
         | "Cancelled"
         | "No Show"
         | "Rescheduled";
 
-    declare purposeOfVisit: string;
+    declare purposeOfVisit: string | null;
 
     declare createdAt: Date;
 }
@@ -90,12 +90,7 @@ Appointment.init(
             allowNull: false,
         },
 
-        startTime: {
-            type: DataTypes.TIME,
-            allowNull: false,
-        },
-
-        endTime: {
+        appointmentTime: {
             type: DataTypes.TIME,
             allowNull: false,
         },
@@ -103,6 +98,7 @@ Appointment.init(
         status: {
             type: DataTypes.ENUM(
                 "Pending",
+                "Approved",
                 "Checked In",
                 "Completed",
                 "Cancelled",

@@ -6,42 +6,24 @@ module.exports = {
         await queryInterface.createTable("appointments", {
             id: {
                 type: Sequelize.INTEGER,
-                allowNull: false,
-                autoIncrement: true,
                 primaryKey: true,
+                autoIncrement: true,
+                allowNull: false,
             },
 
             patientId: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
-                references: {
-                    model: "patients",
-                    key: "id",
-                },
-                onUpdate: "CASCADE",
-                onDelete: "CASCADE",
             },
 
             serviceId: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
-                references: {
-                    model: "services",
-                    key: "id",
-                },
-                onUpdate: "CASCADE",
-                onDelete: "CASCADE",
             },
 
             doctorId: {
                 type: Sequelize.INTEGER,
                 allowNull: false,
-                references: {
-                    model: "doctors",
-                    key: "id",
-                },
-                onUpdate: "CASCADE",
-                onDelete: "CASCADE",
             },
 
             appointmentDate: {
@@ -49,12 +31,7 @@ module.exports = {
                 allowNull: false,
             },
 
-            startTime: {
-                type: Sequelize.TIME,
-                allowNull: false,
-            },
-
-            endTime: {
+            appointmentTime: {
                 type: Sequelize.TIME,
                 allowNull: false,
             },
@@ -62,6 +39,7 @@ module.exports = {
             status: {
                 type: Sequelize.ENUM(
                     "Pending",
+                    "Approved",
                     "Checked In",
                     "Completed",
                     "Cancelled",
@@ -73,8 +51,8 @@ module.exports = {
             },
 
             purposeOfVisit: {
-                type: Sequelize.STRING,
-                allowNull: false,
+                type: Sequelize.TEXT,
+                allowNull: true,
             },
 
             createdAt: {
@@ -85,12 +63,7 @@ module.exports = {
         });
     },
 
-    async down(queryInterface, Sequelize) {
+    async down(queryInterface) {
         await queryInterface.dropTable("appointments");
-
-        // Required for PostgreSQL; harmless if ignored on MySQL
-        await queryInterface.sequelize
-            .query("DROP TYPE IF EXISTS enum_appointments_status;")
-            .catch(() => {});
     },
 };

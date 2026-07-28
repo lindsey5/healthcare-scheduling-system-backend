@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "dev": "cross-env TZ=Asia/Manila nodemon --watch src --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "cross-env TZ=Asia/Manila node dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +29,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^26.1.1",
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.14",
     "sequelize-cli": "^6.6.5",
     "ts-node": "^10.9.2"
