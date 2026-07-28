@@ -17,7 +17,7 @@ Doctor.hasMany(DoctorService, { foreignKey: 'doctorId', as: 'doctorServices' });
 Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 Appointment.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
 Appointment.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
-
+Appointment.hasOne(AppointmentRecord, { foreignKey: "appointmentId", as: "appointmentRecord" });
 DoctorService.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
 DoctorService.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
 
@@ -27,6 +27,7 @@ export {
     Patient, 
     Doctor, 
     Appointment, 
+    AppointmentRecord,
     Service, 
     DoctorService 
 }

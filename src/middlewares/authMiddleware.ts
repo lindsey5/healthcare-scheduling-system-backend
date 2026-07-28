@@ -1,10 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Patient } from "../models";
-
-export interface AuthRequest extends Request {
-    user?: any;
-}
+import { AuthRequest } from "../types/type";
 
 export const authenticate = async (
   req: AuthRequest,

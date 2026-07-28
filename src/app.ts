@@ -5,6 +5,7 @@ import patientRoutes from "./routes/patientRoutes";
 import { errorHandler } from "./middlewares/errorHandler";
 import serviceRoutes from "./routes/serviceRoutes";
 import doctorRoutes from "./routes/doctorRoutes";
+import appointmentRoutes from "./routes/appointmentRoutes";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/api/patients', patientRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/appointments', appointmentRoutes);
 app.use(errorHandler);
 
 export default app;

@@ -167,6 +167,7 @@ export const getAvailableTimeSlot = async (
             where: {
                 serviceId: id,
                 appointmentDate,
+                status: { [Op.ne] : 'Cancelled' }
             },
             order: [["appointmentTime", "ASC"]],
         });
