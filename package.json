@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env TZ=Asia/Manila nodemon --watch src --exec ts-node src/index.ts",
+    "dev": "cross-env nodemon --watch src --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "cross-env TZ=Asia/Manila node dist/index.js"
+    "start": "cross-env node dist/index.js"
   },
   "keywords": [],
   "author": "",

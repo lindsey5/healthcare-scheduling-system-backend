@@ -1,10 +1,13 @@
 import { Router } from "express";
 import { createService, getAvailableTimeSlot, getServices } from "../controllers/serviceController";
+import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post(
     '/',
+    authenticate,
+    authorize("admin"),
     createService
 )
 

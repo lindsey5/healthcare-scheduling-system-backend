@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { createDoctor, getDoctors } from "../controllers/doctorController";
-import { authenticate } from "../middlewares/authMiddleware";
+import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post(
     "/",
+    authenticate,
+    authorize("admin"),
     createDoctor
 );
 
