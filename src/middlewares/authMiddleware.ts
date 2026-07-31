@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Patient } from "../models";
 import { AuthRequest } from "../types/type";
+import Admin from "../models/Admin";
 
 export const authenticate = async (
   req: AuthRequest,
@@ -31,18 +32,32 @@ export const authenticate = async (
             attributes: { exclude: ["password"] },
         })
 
-        if (!patient) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid token",
-            });
-        }
-
         if(patient){
             req.user = {
                 ...patient.toJSON(),
                 role: 'patient'
             }
+        }
+
+        const admin = await Admin.findOne({
+            where: {
+                id: decoded.id,
+            },
+            attributes: { exclude: ["password"] },
+        })
+
+        if(admin){
+            req.user = {
+                ...admin.toJSON(),
+                role: 'admin'
+            }
+        }
+
+        if (!patient && !admin) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token",
+            });
         }
 
         next();

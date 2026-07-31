@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from 'jsonwebtoken';
 import { Patient } from '../models/index';
 import { generateAccessToken, generateRefreshToken } from "../utils/auth";
+import Admin from "../models/Admin";
 
 export const refreshAccessToken = async (
     req: Request,
@@ -34,6 +35,19 @@ export const refreshAccessToken = async (
                 email: patient.email,
                 createdAt: patient.createdAt,
                 role: 'patient'
+            } : undefined;
+        }
+
+        if(decoded.role === 'admin'){
+            const admin = await Admin.findByPk(decoded.id);
+
+            user = admin ? {
+                id: admin.id,
+                firstname: admin.firstname,
+                lastname: admin.lastname,
+                email: admin.email,
+                createdAt: admin.createdAt,
+                role: 'admin'
             } : undefined;
         }
 

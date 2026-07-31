@@ -12,7 +12,6 @@ interface ServiceAttributes {
         | "Friday"
     startTime: string;
     endTime: string;
-    duration: number; // Duration in minutes
     createdAt: Date;
 }
 
@@ -36,7 +35,6 @@ class Service
 
     declare startTime: string;
     declare endTime: string;
-    declare duration: number;
 
     declare createdAt: Date;
 }
@@ -74,16 +72,6 @@ Service.init(
         endTime: {
             type: DataTypes.TIME,
             allowNull: false,
-        },
-
-        duration: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            defaultValue: 30,
-            comment: "Duration in minutes",
-            validate: {
-                min: 5,
-            },
         },
 
         createdAt: {

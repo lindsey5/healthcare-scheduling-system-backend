@@ -37,13 +37,6 @@ module.exports = {
                 allowNull: false,
             },
 
-            duration: {
-                type: Sequelize.INTEGER,
-                allowNull: false,
-                defaultValue: 30,
-                comment: "Duration in minutes",
-            },
-
             createdAt: {
                 type: Sequelize.DATE,
                 allowNull: false,

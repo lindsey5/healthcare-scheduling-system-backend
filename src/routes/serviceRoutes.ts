@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, getAvailableTimeSlot, getServices } from "../controllers/serviceController";
+import { createService, getServices, updateService } from "../controllers/serviceController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -14,11 +14,13 @@ router.post(
 router.get(
     '/',
     getServices
-)
+);
 
-router.get(
-    '/:id/available-time',
-    getAvailableTimeSlot
+router.put(
+    '/:id',
+    authenticate,
+    authorize("admin"),
+    updateService
 )
 
 const serviceRoutes = router;

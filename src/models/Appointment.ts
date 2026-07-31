@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "../config/db";
 
-interface AppointmentAttributes {
+export interface AppointmentAttributes {
     id: string;
     referenceNumber: string;
 
