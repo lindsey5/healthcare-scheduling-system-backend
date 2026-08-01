@@ -1,6 +1,6 @@
 import { WhereOptions } from "sequelize";
 import { AppointmentAttributes } from "../models/Appointment";
-import { Appointment, Doctor, Service, AppointmentRecord } from '../models/index';
+import { Appointment, Doctor, Service, AppointmentRecord, Patient } from '../models/index';
 
 export default class AppointmentService {
     static getAppointments = async ({
@@ -22,6 +22,10 @@ export default class AppointmentService {
                 {
                     model: Service,
                     as: "service",
+                },
+                {
+                    model: Patient,
+                    as: 'patient'
                 },
                 {
                     model: AppointmentRecord,
