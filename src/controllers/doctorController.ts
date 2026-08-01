@@ -57,7 +57,7 @@ export const getDoctors = async (
         const serviceId = req.query.serviceId as string | undefined;
         const search = req.query.search as string | undefined;
 
-        const where: any = {};
+        const where: any = { status: "Active" };
 
         if (search) {
             where[Op.or] = [
