@@ -146,3 +146,21 @@ export const updateService = async (req: Request, res: Response, next: NextFunct
         next(err);
     }
 };
+
+export const deleteService = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const id = req.params.id;
+
+        const service = await Service.findByPk(Number(id));
+
+        if(!service) return res.status(404).json({ message: "Service not found" });
+
+        service.status = 'Deleted';
+        await service.save();
+
+        return res.status(200).json({ message: "Service successfully deleted" });
+
+    }catch(err){
+        next(err);
+    }
+}

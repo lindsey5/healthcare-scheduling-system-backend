@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, getServices, updateService } from "../controllers/serviceController";
+import { createService, deleteService, getServices, updateService } from "../controllers/serviceController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -21,6 +21,13 @@ router.put(
     authenticate,
     authorize("admin"),
     updateService
+)
+
+router.delete(
+    '/:id',
+    authenticate,
+    authorize("admin"),
+    deleteService
 )
 
 const serviceRoutes = router;
