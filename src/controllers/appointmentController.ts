@@ -87,6 +87,31 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
                         [Op.like]: `%${search}%`,
                     },
                 },
+                {
+                    "$doctor.firstname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$doctor.lastname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$service.serviceName$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$patient.firstname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$patient.lastname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
             ];
         }
 
