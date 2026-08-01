@@ -13,6 +13,7 @@ interface ServiceAttributes {
     startTime: string;
     endTime: string;
     createdAt: Date;
+    status: "Active" | "Deleted"
 }
 
 interface ServiceCreationAttributes
@@ -37,6 +38,7 @@ class Service
     declare endTime: string;
 
     declare createdAt: Date;
+    declare status: "Active" | "Deleted"
 }
 
 Service.init(
@@ -79,6 +81,11 @@ Service.init(
             allowNull: false,
             defaultValue: DataTypes.NOW,
         },
+        status: {
+            type: DataTypes.ENUM("Active", "Deleted"),
+            allowNull: false,
+            defaultValue: "Active"
+        }
     },
     {
         sequelize,

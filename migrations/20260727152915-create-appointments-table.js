@@ -55,6 +55,7 @@ module.exports = {
                     "Checked In",
                     "Completed",
                     "Cancelled",
+                    "Rejected",
                     "No Show",
                     "Rescheduled"
                 ),

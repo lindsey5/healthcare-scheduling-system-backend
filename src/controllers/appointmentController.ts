@@ -3,10 +3,11 @@ import { AuthRequest } from "../types/type";
 import { Appointment, AppointmentRecord, Doctor, Service, } from '../models/index';
 import { Op } from "sequelize";
 import AppointmentService from "../services/appointmentService";
+import { AppointmentAttributes } from "../models/Appointment";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
-        const isExisting = await Appointment.findOne({
+        const existingAppointments = await Appointment.count({
             where: {
                 appointmentDate: req.body.appointment.appointmentDate,
                 appointmentTime: req.body.appointment.appointmentTime,
@@ -16,22 +17,25 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             },
         });
 
-        if (isExisting) {
+        if (existingAppointments >= 2) {
             return res.status(409).json({
-                message: "The selected appointment time is already booked. Please choose another time slot.",
+                message:
+                    "The selected appointment time has reached its maximum capacity. Please choose another time slot.",
             });
         }
 
-        const appointmentDate = new Date(req.body.appointmentDate);
+        const appointmentDate = new Date(req.body.appointment.appointmentDate);
 
-        const dayOfWeek = appointmentDate.toLocaleDateString("en-US", {
+        const dayOfWeek = appointmentDate.toLocaleDateString("en-CA", {
             weekday: "long",
             timeZone: "Asia/Manila",
         });
 
+        console.log(dayOfWeek)
+
         const isValid = await Service.findOne({
             where: {
-                id: req.body.appointment.serviceId,
+                id: Number(req.body.appointment.serviceId),
                 dayOfWeek,
             },
         });
@@ -158,7 +162,101 @@ export const getMyAppointments = async (
     }
 };
 
-export const getAvailableTimeSlot = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const id = req.params.id;
+        const status = req.body.status as AppointmentAttributes['status'];
+
+        const appointment = await Appointment.findByPk(String(id));
+
+        if(!appointment) return res.status(404).json({ message: "Appointment not found." });
+
+        const allowedTransitions: Record<string, string[]> = {
+            Pending: ["Approved", "Rejected", "Cancelled"],
+            Approved: ["Checked In", "Reschedule", "No Show", "Cancelled"],
+            "Checked In": ["Completed"],
+            "Completed" : [],
+            "Cancelled" : [],
+            "Rejected" : [],
+            "Rescheduled" : ["Completed"]
+        };
+
+        const currentStatus = appointment.status;
+
+        const allowedNextStatuses = allowedTransitions[currentStatus] || [];
+
+        if (!allowedNextStatuses.includes(status)) {
+
+            return res.status(400).json({
+                success: false,
+                message: `Cannot update order status from ${currentStatus} to ${status}. Please reload the page`,
+            });
+        }
+
+        appointment.status = status;
+
+        await appointment.save();
+
+        return res.status(200).json({
+            appointment,
+            message: `Appointment status successfully updated to ${status}`
+        })
+
+    } catch (err) {
+        next(err);
+    }
+}
+
+export const cancelAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const id = req.params.id;
+
+        const appointment = await Appointment.findByPk(String(id));
+
+        if(!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+        if(appointment.patientId !== req.user.id) return res.status(401).json({ message: "You are not authorized to access this appointment." })
+
+        const allowedTransitions: Record<string, string[]> = {
+            Pending: ["Approved", "Rejected", "Cancelled"],
+            Approved: ["Checked In", "Reschedule", "No Show", "Cancelled"],
+            "Checked In": ["Completed"],
+            "Completed" : [],
+            "Cancelled" : [],
+            "Rejected" : [],
+            "Rescheduled" : ["Completed"]
+        };
+
+        const currentStatus = appointment.status;
+
+        const allowedNextStatuses = allowedTransitions[currentStatus] || [];
+
+        if (!allowedNextStatuses.includes("Cancelled")) {
+
+            return res.status(400).json({
+                success: false,
+                message: `Cannot cancel appointment. Please reload the page`,
+            });
+        }
+
+        appointment.status = "Cancelled";
+        await appointment.save();
+
+        return res.status(200).json({ 
+            appointment,
+            message: "Appointment successfully cancelled"
+        })
+
+    } catch (err) {
+        next(err);
+    }
+}
+
+export const getAvailableTimeSlot = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
         const appointmentDate = req.query.appointmentDate as string;
 
@@ -183,20 +281,21 @@ export const getAvailableTimeSlot = async (req: Request, res: Response, next: Ne
 
         // Selected appointment date
         const selectedDate = new Date(appointmentDate);
+
         const selectedDay = new Date(
             selectedDate.getFullYear(),
             selectedDate.getMonth(),
             selectedDate.getDate()
         );
 
-        // Hide past dates
+        // Don't allow past dates
         if (selectedDay < today) {
             return res.status(200).json({
                 availableTimes: [],
             });
         }
 
-        // Get booked appointments (excluding cancelled)
+        // Get all non-cancelled appointments for the selected date
         const appointments = await Appointment.findAll({
             where: {
                 appointmentDate,
@@ -207,8 +306,16 @@ export const getAvailableTimeSlot = async (req: Request, res: Response, next: Ne
             order: [["appointmentTime", "ASC"]],
         });
 
-        const bookedTimes = new Set(
-            appointments.map((appointment) => appointment.appointmentTime)
+        // Count appointments per time slot
+        const bookedTimesCount = appointments.reduce<Record<string, number>>(
+            (acc, appointment) => {
+                const time = appointment.appointmentTime;
+
+                acc[time] = (acc[time] || 0) + 1;
+
+                return acc;
+            },
+            {}
         );
 
         const slots: string[] = [];
@@ -222,21 +329,19 @@ export const getAvailableTimeSlot = async (req: Request, res: Response, next: Ne
 
         const isToday = selectedDay.getTime() === today.getTime();
 
-        const currentManilaTime = manilaNow
-            .toTimeString()
-            .slice(0, 8);
+        const currentManilaTime = manilaNow.toTimeString().slice(0, 8);
 
-        // Generate 1-hour time slots
         while (current < end) {
             const slotStart = current.toTimeString().slice(0, 8);
 
-            // Hide past time slots if booking today
+            // Hide past time slots when booking today
             if (isToday && slotStart <= currentManilaTime) {
                 current.setHours(current.getHours() + 1);
                 continue;
             }
 
-            if (!bookedTimes.has(slotStart)) {
+            // Allow a maximum of 2 appointments per time slot
+            if ((bookedTimesCount[slotStart] ?? 0) < 2) {
                 slots.push(slotStart);
             }
 

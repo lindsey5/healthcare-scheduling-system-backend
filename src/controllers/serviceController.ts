@@ -34,6 +34,7 @@ export const createService = async (req: Request, res: Response, next: NextFunct
             where: {
                 serviceName,
                 dayOfWeek,
+                status: "Active"
             },
         });
 
@@ -66,7 +67,10 @@ export const getServices = async (req: Request, res: Response, next: NextFunctio
         const whereClause = dayOfWeek ? { dayOfWeek } : undefined;
 
         const services = await Service.findAll({
-            where: whereClause
+            where: {
+                ...whereClause,
+                status: 'Active'
+            }
         })
 
         return res.status(200).json({ services });
@@ -108,6 +112,7 @@ export const updateService = async (req: Request, res: Response, next: NextFunct
             where: {
                 serviceName,
                 dayOfWeek,
+                status: "Active",
                 id: {
                     [Op.ne]: Number(req.params.id)
                 },

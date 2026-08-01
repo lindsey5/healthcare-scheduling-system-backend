@@ -19,6 +19,7 @@ export interface AppointmentAttributes {
         | "Checked In"
         | "Completed"
         | "Cancelled"
+        | "Rejected"
         | "No Show"
         | "Rescheduled";
 
@@ -58,6 +59,7 @@ class Appointment
         | "Pending"
         | "Approved"
         | "Checked In"
+        | "Rejected"
         | "Completed"
         | "Cancelled"
         | "No Show"
@@ -116,6 +118,7 @@ Appointment.init(
                 "Completed",
                 "Cancelled",
                 "No Show",
+                "Rejected",
                 "Rescheduled"
             ),
             allowNull: false,

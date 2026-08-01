@@ -42,6 +42,15 @@ module.exports = {
                 allowNull: false,
                 defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
             },
+
+            status: {
+                type: Sequelize.ENUM(
+                    "Active",
+                    "Deleted"
+                ),
+                allowNull: false,
+                defaultValue: "Active"
+            },
         });
     },
 
