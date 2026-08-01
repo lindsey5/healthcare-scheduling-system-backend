@@ -355,3 +355,57 @@ export const getAvailableTimeSlot = async (
         next(err);
     }
 };
+
+export const getPatientUpcomingAppointments = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const upcomingAppointments = await Appointment.count({
+            where: {
+                patientId: req.user.id,
+                status: { [Op.in] : ["Approved", "Rescheduled"]}
+            }
+        })
+
+        return res.status(200).json({
+            upcomingAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
+
+export const getPatientPendingAppointments = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const pendingAppointments = await Appointment.count({
+            where: {
+                patientId: req.user.id,
+                status: "Pending"
+            }
+        })
+
+        return res.status(200).json({
+            pendingAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
+
+export const getPatientCompletedAppointments = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const completedAppointments = await Appointment.count({
+            where: {
+                patientId: req.user.id,
+                status: "Completed"
+            }
+        })
+
+        return res.status(200).json({
+            completedAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
