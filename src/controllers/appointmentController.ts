@@ -7,7 +7,7 @@ import { AppointmentAttributes } from "../models/Appointment";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
-        const existingAppointments = await Appointment.count({
+        const existingAppointment = await Appointment.findOne({
             where: {
                 appointmentDate: req.body.appointment.appointmentDate,
                 appointmentTime: req.body.appointment.appointmentTime,
@@ -17,7 +17,7 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             },
         });
 
-        if (existingAppointments >= 2) {
+        if (existingAppointment) {
             return res.status(409).json({
                 message:
                     "The selected appointment time has reached its maximum capacity. Please choose another time slot.",
@@ -30,8 +30,6 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             weekday: "long",
             timeZone: "Asia/Manila",
         });
-
-        console.log(dayOfWeek)
 
         const isValid = await Service.findOne({
             where: {
@@ -284,10 +282,17 @@ export const getAvailableTimeSlot = async (
 ) => {
     try {
         const appointmentDate = req.query.appointmentDate as string;
+        const serviceId = req.query.serviceId as string;
 
         if (!appointmentDate) {
             return res.status(400).json({
                 message: "Appointment date is required.",
+            });
+        }
+
+        if (!serviceId) {
+            return res.status(400).json({
+                message: "Service ID is required.",
             });
         }
 
@@ -320,10 +325,20 @@ export const getAvailableTimeSlot = async (
             });
         }
 
-        // Get all non-cancelled appointments for the selected date
+        // Get service
+        const service = await Service.findByPk(serviceId);
+
+        if (!service) {
+            return res.status(404).json({
+                message: "Service not found.",
+            });
+        }
+
+        // Get all non-cancelled appointments for the selected date and service
         const appointments = await Appointment.findAll({
             where: {
                 appointmentDate,
+                serviceId,
                 status: {
                     [Op.ne]: "Cancelled",
                 },
@@ -331,46 +346,54 @@ export const getAvailableTimeSlot = async (
             order: [["appointmentTime", "ASC"]],
         });
 
-        // Count appointments per time slot
-        const bookedTimesCount = appointments.reduce<Record<string, number>>(
-            (acc, appointment) => {
-                const time = appointment.appointmentTime;
-
-                acc[time] = (acc[time] || 0) + 1;
-
-                return acc;
-            },
-            {}
+        // Store booked time slots
+        const bookedTimes = new Set(
+            appointments.map((appointment) => appointment.appointmentTime)
         );
 
         const slots: string[] = [];
 
-        // Clinic hours: 7:00 AM - 4:00 PM
+        // Use service schedule
         const current = new Date(selectedDate);
-        current.setHours(7, 0, 0, 0);
+        const [startHour, startMinute] = service.startTime
+            .split(":")
+            .map(Number);
+        current.setHours(startHour, startMinute, 0, 0);
 
         const end = new Date(selectedDate);
-        end.setHours(16, 0, 0, 0);
+        const [endHour, endMinute] = service.endTime
+            .split(":")
+            .map(Number);
+        end.setHours(endHour, endMinute, 0, 0);
 
         const isToday = selectedDay.getTime() === today.getTime();
 
-        const currentManilaTime = manilaNow.toTimeString().slice(0, 8);
-
         while (current < end) {
-            const slotStart = current.toTimeString().slice(0, 8);
-
-            // Hide past time slots when booking today
-            if (isToday && slotStart <= currentManilaTime) {
-                current.setHours(current.getHours() + 1);
+            // Skip lunch break (11:00 AM - 12:30 PM)
+            if (
+                current.getHours() === 11 ||
+                (current.getHours() === 12 &&
+                    current.getMinutes() === 0)
+            ) {
+                current.setMinutes(current.getMinutes() + 30);
                 continue;
             }
 
-            // Allow a maximum of 2 appointments per time slot
-            if ((bookedTimesCount[slotStart] ?? 0) < 2) {
+            const slotStart = current.toTimeString().slice(0, 8);
+
+            // Hide past time slots if booking today
+            if (isToday && current <= manilaNow) {
+                current.setMinutes(current.getMinutes() + 30);
+                continue;
+            }
+
+            // Only one appointment allowed per slot
+            if (!bookedTimes.has(slotStart)) {
                 slots.push(slotStart);
             }
 
-            current.setHours(current.getHours() + 1);
+            // Move to next 30-minute interval
+            current.setMinutes(current.getMinutes() + 30);
         }
 
         return res.status(200).json({
