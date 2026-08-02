@@ -6,6 +6,7 @@ import {
     generateRefreshToken,
     verifyPassword,
 } from "../utils/auth";
+import { Op } from "sequelize";
 
 export const registerPatient = async (
     req: Request,
@@ -200,3 +201,52 @@ export const loginPatient = async (
         next(err);
     }
 };
+
+export const getPatients = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const search = (req.query.search as string) || "";
+
+        const where: any = {};
+
+        if(search) {
+            where[Op.or] = [
+                { firstname: { [Op.like] : `%${search}%`} },
+                { lastname: { [Op.like] : `%${search}%`} },
+                { email: { [Op.like] : `%${search}%`} }
+            ]
+        }
+
+        const { count: total, rows: patients }  = await Patient.findAndCountAll({
+            where,
+            order: [["createdAt", "DESC"]],
+            limit,
+            offset
+        })
+
+        return res.status(200).json({
+            patients,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            total
+        });
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const getTotalPatients = async (req: Request, res:Response, next: NextFunction) => {
+    try{
+        const total = await Patient.count();
+
+        return res.status(200).json({ total });
+
+    }catch(err){
+        next(err);
+    }
+}

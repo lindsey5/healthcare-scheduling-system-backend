@@ -457,3 +457,99 @@ export const getPatientCompletedAppointments = async (req: AuthRequest, res: Res
         next(err);
     }
 }
+
+export const getTodayAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get today's date in Asia/Manila (YYYY-MM-DD)
+        const today = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        )
+            .toISOString()
+            .split("T")[0];
+
+        const todayAppointments = await Appointment.count({
+            where: {
+                appointmentDate: today,
+                status: {
+                    [Op.ne]: "Cancelled",
+                },
+            },
+        });
+
+        return res.status(200).json({
+            todayAppointments,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getPendingAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const pendingAppointments = await Appointment.count({
+            where: {
+                status: "Pending"
+            }
+        })
+
+        return res.status(200).json({
+            pendingAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
+
+export const getCompletedAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const completedAppointments = await Appointment.count({
+            where: {
+                status: "Completed"
+            }
+        })
+
+        return res.status(200).json({
+            completedAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
+
+export const getUpcomingAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const upcomingAppointments = await Appointment.count({
+            where: {
+                status: { [Op.in] : ["Approved", "Rescheduled"]}
+            }
+        })
+
+        return res.status(200).json({
+            upcomingAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}
+
+export const getCancelledAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const cancelledAppointments = await Appointment.count({
+            where: {
+                status: "Cancelled"
+            }
+        })
+
+        return res.status(200).json({
+            cancelledAppointments
+        })
+
+    } catch(err) {
+        next(err);
+    }
+}

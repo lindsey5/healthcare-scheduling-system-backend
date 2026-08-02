@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { cancelAppointment, createAppointment, getAppointments, getAvailableTimeSlot, getMyAppointments, getPatientCompletedAppointments, getPatientPendingAppointments, getPatientUpcomingAppointments, updateAppointmentStatus } from "../controllers/appointmentController";
+import { cancelAppointment, createAppointment, getAppointments, getAvailableTimeSlot, getCancelledAppointments, getCompletedAppointments, getMyAppointments, getPatientCompletedAppointments, getPatientPendingAppointments, getPatientUpcomingAppointments, getPendingAppointments, getTodayAppointments, getUpcomingAppointments, updateAppointmentStatus } from "../controllers/appointmentController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -30,6 +30,41 @@ router.get(
     authenticate,
     authorize("patient"),
     getAvailableTimeSlot
+)
+
+router.get(
+    '/today',
+    authenticate,
+    authorize("staff", "admin"),
+    getTodayAppointments
+)
+
+router.get(
+    '/pending',
+    authenticate,
+    authorize("staff", "admin"),
+    getPendingAppointments
+)
+
+router.get(
+    '/upcoming',
+    authenticate,
+    authorize("staff", "admin"),
+    getUpcomingAppointments
+)
+
+router.get(
+    '/completed',
+    authenticate,
+    authorize("staff", "admin"),
+    getCompletedAppointments
+)
+
+router.get(
+    '/cancelled',
+    authenticate,
+    authorize("staff", "admin"),
+    getCancelledAppointments
 )
 
 router.get(
