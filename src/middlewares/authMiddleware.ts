@@ -70,7 +70,9 @@ export const authenticate = async (
     }
 };
 
-export const authorize = (...allowedRoles: string[]) => {
+type Role = "admin" | "staff" | "patient";
+
+export const authorize = (...allowedRoles: Role[]) => {
     return (
         req: AuthRequest,
         res: Response,

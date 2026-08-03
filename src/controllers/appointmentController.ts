@@ -26,7 +26,7 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
 
         const appointmentDate = new Date(req.body.appointment.appointmentDate);
 
-        const dayOfWeek = appointmentDate.toLocaleDateString("en-CA", {
+        const dayOfWeek = appointmentDate.toLocaleDateString("en-US", {
             weekday: "long",
             timeZone: "Asia/Manila",
         });
@@ -85,6 +85,28 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
                 : "DESC";
 
         const where: any = {};
+
+        const today = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        )
+            .toISOString()
+            .split("T")[0];
+
+        await Appointment.update(
+            { status: "No Show" },
+            {
+                where: {
+                    appointmentDate: {
+                        [Op.lt]: today,
+                    },
+                    status: {
+                        [Op.in]: ["Pending", "Approved"],
+                    },
+                },
+            }
+        );
 
         if (search) {
             where[Op.or] = [
@@ -169,6 +191,27 @@ export const getMyAppointments = async (
                 ? "ASC"
                 : "DESC";
 
+        const today = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        )
+            .toISOString()
+            .split("T")[0];
+
+        await Appointment.update(
+            { status: "No Show" },
+            {
+                where: {
+                    appointmentDate: {
+                        [Op.lt]: today,
+                    },
+                    status: {
+                        [Op.in]: ["Pending", "Approved"],
+                    },
+                },
+            }
+        );
 
         const where: any = {
             patientId: req.user.id,

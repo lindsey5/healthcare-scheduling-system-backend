@@ -72,7 +72,7 @@ Staff.init(
     {
         sequelize,
         modelName: "Staff",
-        tableName: "staff",
+        tableName: "staffs",
         timestamps: false,
 
         hooks: {

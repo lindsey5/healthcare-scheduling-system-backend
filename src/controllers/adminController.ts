@@ -83,10 +83,23 @@ export const loginAdmin = async (
 
 export const getAdmins = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
+        const search = String(req.query.search);
+
+        const where : any = { id: { [Op.ne] : req.user.id } };
+
+        if(search) {
+            where[Op.or] = [
+                { firstname: { [Op.like] : `%${search}%`} },
+                { lastname: { [Op.like] : `%${search}%`} },
+                { email: { [Op.like] : `%${search}%`} }
+            ]
+        }
+
         const admins = await Admin.findAll({
-            where: {
-                id: { [Op.ne] : req.user.id }
-            }
+            where,
+            attributes: {
+                exclude: ["password"],
+            },
         });
 
         return res.status(200).json({
@@ -106,7 +119,10 @@ export const updateAdmin = async (req : Request, res: Response, next: NextFuncti
             where: {
                 email: req.body.email,
                 id: { [Op.ne] : id }
-            }
+            },
+            attributes: {
+                exclude: ["password"],
+            },
         });
 
         if(isExisting){
@@ -127,6 +143,23 @@ export const updateAdmin = async (req : Request, res: Response, next: NextFuncti
             admin,
             message: "Admin successfully updated"
         })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const deleteAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const id = req.params.id;
+
+        const admin = await Admin.findByPk(Number(id));
+
+        if(!admin) return res.status(404).json({ message: "Admin not found." });
+
+        await admin.destroy();
+
+        res.status(200).json({ message: "Admin successfully deleted" });
 
     }catch(err){
         next(err);

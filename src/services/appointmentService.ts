@@ -42,6 +42,9 @@ export default class AppointmentService {
                 },
                 {
                     model: Patient,
+                    attributes: {
+                        exclude: ["password", "verificationCode", "verificationCodeExpiresAt"],
+                    },
                     as: 'patient'
                 },
                 {

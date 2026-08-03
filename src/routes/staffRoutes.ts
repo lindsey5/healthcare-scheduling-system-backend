@@ -1,42 +1,46 @@
 import { Router } from "express";
-import { createAdmin, deleteAdmin, getAdmins, loginAdmin, updateAdmin } from "../controllers/adminController";
+import {
+    createStaff,
+    deleteStaff,
+    getStaffs,
+    loginStaff,
+    updateStaff,
+} from "../controllers/staffController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post(
     "/",
-    authenticate,
-    authorize("admin"),
-    createAdmin
+    createStaff
 );
 
 router.post(
     "/login",
-    loginAdmin
-)
+    loginStaff
+);
 
 router.get(
-    '/',
+    "/",
     authenticate,
     authorize("admin"),
-    getAdmins
-)
+    getStaffs
+);
 
 router.put(
-    '/:id',
+    "/:id",
     authenticate,
     authorize("admin"),
-    updateAdmin
-)
+    updateStaff
+);
 
 router.delete(
-    '/:id',
+    "/:id",
     authenticate,
     authorize("admin"),
-    deleteAdmin
-)
+    deleteStaff
+);
 
-const adminRoutes = router;
+const staffRoutes = router;
 
-export default adminRoutes;
+export default staffRoutes;

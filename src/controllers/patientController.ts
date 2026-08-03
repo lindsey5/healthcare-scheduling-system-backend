@@ -224,7 +224,10 @@ export const getPatients = async (req: Request, res: Response, next: NextFunctio
             where,
             order: [["createdAt", "DESC"]],
             limit,
-            offset
+            offset,
+            attributes: {
+                exclude: ["password"],
+            },
         })
 
         return res.status(200).json({
