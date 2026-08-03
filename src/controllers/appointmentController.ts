@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
 import { Appointment, AppointmentRecord, Doctor, Service, } from '../models/index';
-import { Op } from "sequelize";
+import { Op, or } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 
@@ -68,13 +68,21 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
 }
 
 export const getAppointments = async (req: Request, res: Response, next: NextFunction) => {
-    try{
+    try {
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
         const search = (req.query.search as string) || "";
         const status = req.query.status as string;
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
+        const sort = (req.query.sort as string) || "createdAt";
+        const order =
+            (req.query.order as string)?.toUpperCase() === "ASC"
+                ? "ASC"
+                : "DESC";
 
         const where: any = {};
 
@@ -113,6 +121,13 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
             ];
         }
 
+        if (startDate || endDate) {
+            where.appointmentDate = {
+                ...(startDate && { [Op.gte]: startDate }),
+                ...(endDate && { [Op.lte]: endDate }),
+            };
+        }
+
         if (status && status !== "All") {
             where.status = status;
         }
@@ -120,7 +135,8 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
         const { total, appointments } = await AppointmentService.getAppointments({
             where,
             limit,
-            offset
+            offset,
+            order: [[ sort, order]],
         });
 
         return res.status(200).json({
@@ -128,13 +144,12 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
             page,
             limit,
             totalPages: Math.ceil(total / limit),
-            total
+            total,
         });
-
-    }catch(err){
+    } catch (err) {
         next(err);
     }
-}
+};
 
 export const getMyAppointments = async (
     req: AuthRequest,
@@ -148,6 +163,12 @@ export const getMyAppointments = async (
 
         const search = (req.query.search as string) || "";
         const status = req.query.status as string;
+        const sort = (req.query.sort as string) || "createdAt";
+        const order =
+            (req.query.order as string)?.toUpperCase() === "ASC"
+                ? "ASC"
+                : "DESC";
+
 
         const where: any = {
             patientId: req.user.id,
@@ -157,6 +178,26 @@ export const getMyAppointments = async (
             where[Op.or] = [
                 {
                     referenceNumber: {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$doctor.firstname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$doctor.lastname$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$service.serviceName$": {
+                        [Op.like]: `%${search}%`,
+                    },
+                },
+                {
+                    "$patient.firstname$": {
                         [Op.like]: `%${search}%`,
                     },
                 },
@@ -170,7 +211,8 @@ export const getMyAppointments = async (
         const { total, appointments } = await AppointmentService.getAppointments({
             where,
             limit,
-            offset
+            offset,
+            order: [[sort, order]]
         });
 
         return res.status(200).json({
@@ -550,6 +592,19 @@ export const getCancelledAppointments = async (req: Request, res: Response, next
         })
 
     } catch(err) {
+        next(err);
+    }
+}
+
+export const getMonthlyAppointments = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const year = Number(req.query.year) || new Date().getFullYear();
+        const monthlyAppointments = await AppointmentService.getMonthlyAppointmentsByYear(year);
+
+        res.status(200).json({
+            monthlyAppointments,
+        })
+    }catch(err){
         next(err);
     }
 }

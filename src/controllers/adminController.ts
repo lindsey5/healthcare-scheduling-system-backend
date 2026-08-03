@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import Admin from "../models/Admin";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
+import { Op } from "sequelize";
+import { AuthRequest } from "../types/type";
 
 export const createAdmin = async (req : Request, res: Response, next: NextFunction) =>{
     try{
@@ -78,3 +80,55 @@ export const loginAdmin = async (
         next(err);
     }
 };
+
+export const getAdmins = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const admins = await Admin.findAll({
+            where: {
+                id: { [Op.ne] : req.user.id }
+            }
+        });
+
+        return res.status(200).json({
+            admins
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const updateAdmin = async (req : Request, res: Response, next: NextFunction) =>{
+    try{
+        const id = Number(req.params.id);
+
+        const isExisting = await Admin.findOne({
+            where: {
+                email: req.body.email,
+                id: { [Op.ne] : id }
+            }
+        });
+
+        if(isExisting){
+            return res.status(409).json({
+                message: "Email already used."
+            })
+        }
+
+        const admin = await Admin.findByPk(id);
+
+        if(!admin) return res.status(404).json({ message: "Admin not found" });
+
+        admin.set(req.body);
+
+        await admin.save()
+
+        res.status(201).json({
+            admin,
+            message: "Admin successfully updated"
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
