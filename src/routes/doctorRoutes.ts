@@ -7,7 +7,7 @@ const router = Router();
 router.post(
     "/",
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     createDoctor
 );
 
@@ -20,14 +20,14 @@ router.get(
 router.put(
     '/:id',
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     updateDoctor
 )
 
 router.delete(
     '/:id',
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     deleteDoctor
 )
 

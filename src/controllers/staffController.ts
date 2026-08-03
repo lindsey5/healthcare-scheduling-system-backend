@@ -91,11 +91,7 @@ export const getStaffs = async (
     try {
         const search = String(req.query.search || "");
 
-        const where: any = {
-            id: {
-                [Op.ne]: req.user.id,
-            },
-        };
+        const where: any = {};
 
         if (search) {
             where[Op.or] = [
