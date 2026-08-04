@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
 import { Appointment, AppointmentRecord, Doctor, Service, } from '../models/index';
-import { Op, or } from "sequelize";
+import { Op, or, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 
@@ -74,7 +74,8 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
         const offset = (page - 1) * limit;
 
         const search = (req.query.search as string) || "";
-        const status = req.query.status as string;
+        const status = req.query.status;
+
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
 
@@ -109,38 +110,60 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
         );
 
         if (search) {
-            where[Op.or] = [
-                {
-                    referenceNumber: {
-                        [Op.like]: `%${search}%`,
-                    },
+           where[Op.or] = [
+            {
+                referenceNumber: {
+                    [Op.like]: `%${search}%`,
                 },
+            },
+            Sequelize.where(
+                Sequelize.fn(
+                    "CONCAT",
+                    Sequelize.col("doctor.firstname"),
+                    " ",
+                    Sequelize.col("doctor.lastname")
+                ),
                 {
-                    "$doctor.firstname$": {
-                        [Op.like]: `%${search}%`,
-                    },
-                },
+                    [Op.like]: `%${search}%`,
+                }
+            ),
+            Sequelize.where(
+                Sequelize.fn(
+                    "CONCAT",
+                    Sequelize.col("patient.firstname"),
+                    " ",
+                    Sequelize.col("patient.lastname")
+                ),
                 {
-                    "$doctor.lastname$": {
-                        [Op.like]: `%${search}%`,
-                    },
+                    [Op.like]: `%${search}%`,
+                }
+            ),
+            {
+                "$doctor.firstname$": {
+                    [Op.like]: `%${search}%`,
                 },
-                {
-                    "$service.serviceName$": {
-                        [Op.like]: `%${search}%`,
-                    },
+            },
+            {
+                "$doctor.lastname$": {
+                    [Op.like]: `%${search}%`,
                 },
-                {
-                    "$patient.firstname$": {
-                        [Op.like]: `%${search}%`,
-                    },
+            },
+            {
+                "$patient.firstname$": {
+                    [Op.like]: `%${search}%`,
                 },
-                {
-                    "$patient.lastname$": {
-                        [Op.like]: `%${search}%`,
-                    },
+            },
+            {
+                "$patient.lastname$": {
+                    [Op.like]: `%${search}%`,
                 },
-            ];
+            },
+            {
+                "$service.serviceName$": {
+                    [Op.like]: `%${search}%`,
+                },
+            },
+        ];
         }
 
         if (startDate || endDate) {
@@ -186,6 +209,10 @@ export const getMyAppointments = async (
         const search = (req.query.search as string) || "";
         const status = req.query.status as string;
         const sort = (req.query.sort as string) || "createdAt";
+
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+
         const order =
             (req.query.order as string)?.toUpperCase() === "ASC"
                 ? "ASC"
@@ -219,32 +246,66 @@ export const getMyAppointments = async (
 
         if (search) {
             where[Op.or] = [
-                {
-                    referenceNumber: {
-                        [Op.like]: `%${search}%`,
-                    },
+            {
+                referenceNumber: {
+                    [Op.like]: `%${search}%`,
                 },
+            },
+            Sequelize.where(
+                Sequelize.fn(
+                    "CONCAT",
+                    Sequelize.col("doctor.firstname"),
+                    " ",
+                    Sequelize.col("doctor.lastname")
+                ),
                 {
-                    "$doctor.firstname$": {
-                        [Op.like]: `%${search}%`,
-                    },
-                },
+                    [Op.like]: `%${search}%`,
+                }
+            ),
+            Sequelize.where(
+                Sequelize.fn(
+                    "CONCAT",
+                    Sequelize.col("patient.firstname"),
+                    " ",
+                    Sequelize.col("patient.lastname")
+                ),
                 {
-                    "$doctor.lastname$": {
-                        [Op.like]: `%${search}%`,
-                    },
+                    [Op.like]: `%${search}%`,
+                }
+            ),
+            {
+                "$doctor.firstname$": {
+                    [Op.like]: `%${search}%`,
                 },
-                {
-                    "$service.serviceName$": {
-                        [Op.like]: `%${search}%`,
-                    },
+            },
+            {
+                "$doctor.lastname$": {
+                    [Op.like]: `%${search}%`,
                 },
-                {
-                    "$patient.firstname$": {
-                        [Op.like]: `%${search}%`,
-                    },
+            },
+            {
+                "$patient.firstname$": {
+                    [Op.like]: `%${search}%`,
                 },
-            ];
+            },
+            {
+                "$patient.lastname$": {
+                    [Op.like]: `%${search}%`,
+                },
+            },
+            {
+                "$service.serviceName$": {
+                    [Op.like]: `%${search}%`,
+                },
+            },
+        ];
+        }
+
+        if (startDate || endDate) {
+            where.appointmentDate = {
+                ...(startDate && { [Op.gte]: startDate }),
+                ...(endDate && { [Op.lte]: endDate }),
+            };
         }
 
         if (status && status !== "All") {
@@ -491,17 +552,29 @@ export const getAvailableTimeSlot = async (
 
 export const getPatientUpcomingAppointments = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
+        const today = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        )
+            .toISOString()
+            .split("T")[0];
+
         const upcomingAppointments = await Appointment.count({
             where: {
                 patientId: req.user.id,
-                status: { [Op.in] : ["Approved", "Rescheduled"]}
-            }
-        })
+                appointmentDate: {
+                    [Op.gt]: today,
+                },
+                status: {
+                    [Op.in]: ["Approved", "Rescheduled"],
+                },
+            },
+        });
 
         return res.status(200).json({
-            upcomingAppointments
-        })
-
+            upcomingAppointments,
+        });
     } catch(err) {
         next(err);
     }
@@ -605,22 +678,38 @@ export const getCompletedAppointments = async (req: Request, res: Response, next
     }
 }
 
-export const getUpcomingAppointments = async (req: Request, res: Response, next: NextFunction) => {
+export const getUpcomingAppointments = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
     try {
+        const today = new Date(
+            new Date().toLocaleString("en-US", {
+                timeZone: "Asia/Manila",
+            })
+        )
+            .toISOString()
+            .split("T")[0];
+
         const upcomingAppointments = await Appointment.count({
             where: {
-                status: { [Op.in] : ["Approved", "Rescheduled"]}
-            }
-        })
+                appointmentDate: {
+                    [Op.gt]: today,
+                },
+                status: {
+                    [Op.in]: ["Approved", "Rescheduled"],
+                },
+            },
+        });
 
         return res.status(200).json({
-            upcomingAppointments
-        })
-
-    } catch(err) {
+            upcomingAppointments,
+        });
+    } catch (err) {
         next(err);
     }
-}
+};
 
 export const getCancelledAppointments = async (req: Request, res: Response, next: NextFunction) => {
     try {
