@@ -1,7 +1,7 @@
 import { NextFunction, Response, Request } from "express";
 import { Doctor, DoctorService, Service } from "../models/index";
 import { sequelize } from "../config/db";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 export const createDoctor = async (
     req: Request,
@@ -61,6 +61,17 @@ export const getDoctors = async (
 
         if (search) {
             where[Op.or] = [
+                Sequelize.where(
+                    Sequelize.fn(
+                        "CONCAT",
+                        Sequelize.col("firstname"),
+                        " ",
+                        Sequelize.col("lastname")
+                    ),
+                    {
+                        [Op.like]: `%${search}%`,
+                    }
+                ),
                 {
                     firstname: {
                         [Op.like]: `%${search}%`,

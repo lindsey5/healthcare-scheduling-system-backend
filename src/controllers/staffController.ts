@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import Staff from "../models/Staff";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
 import { AuthRequest } from "../types/type";
@@ -95,6 +95,17 @@ export const getStaffs = async (
 
         if (search) {
             where[Op.or] = [
+                Sequelize.where(
+                    Sequelize.fn(
+                        "CONCAT",
+                        Sequelize.col("firstname"),
+                        " ",
+                        Sequelize.col("lastname")
+                    ),
+                    {
+                        [Op.like]: `%${search}%`,
+                    }
+                ),
                 {
                     firstname: {
                         [Op.like]: `%${search}%`,

@@ -6,7 +6,7 @@ import {
     generateRefreshToken,
     verifyPassword,
 } from "../utils/auth";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 export const registerPatient = async (
     req: Request,
@@ -214,6 +214,17 @@ export const getPatients = async (req: Request, res: Response, next: NextFunctio
 
         if(search) {
             where[Op.or] = [
+                Sequelize.where(
+                    Sequelize.fn(
+                        "CONCAT",
+                        Sequelize.col("firstname"),
+                        " ",
+                        Sequelize.col("lastname")
+                    ),
+                    {
+                        [Op.like]: `%${search}%`,
+                    }
+                ),
                 { firstname: { [Op.like] : `%${search}%`} },
                 { lastname: { [Op.like] : `%${search}%`} },
                 { email: { [Op.like] : `%${search}%`} }

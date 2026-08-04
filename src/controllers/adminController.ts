@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import Admin from "../models/Admin";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { AuthRequest } from "../types/type";
 
 export const createAdmin = async (req : Request, res: Response, next: NextFunction) =>{
@@ -89,6 +89,17 @@ export const getAdmins = async (req: AuthRequest, res: Response, next: NextFunct
 
         if(search) {
             where[Op.or] = [
+                Sequelize.where(
+                    Sequelize.fn(
+                        "CONCAT",
+                        Sequelize.col("firstname"),
+                        " ",
+                        Sequelize.col("lastname")
+                    ),
+                    {
+                        [Op.like]: `%${search}%`,
+                    }
+                ),
                 { firstname: { [Op.like] : `%${search}%`} },
                 { lastname: { [Op.like] : `%${search}%`} },
                 { email: { [Op.like] : `%${search}%`} }
