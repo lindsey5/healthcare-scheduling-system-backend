@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Patient } from '../models/index';
 import { generateAccessToken, generateRefreshToken } from "../utils/auth";
 import Admin from "../models/Admin";
+import Staff from "../models/Staff";
 
 export const refreshAccessToken = async (
     req: Request,
@@ -49,6 +50,19 @@ export const refreshAccessToken = async (
                 createdAt: admin.createdAt,
                 role: 'admin'
             } : undefined;
+        }
+        
+        if(decoded.role === 'staff'){
+            const staff = await Staff.findByPk(decoded.id);
+
+            user = staff ? {
+                id: staff.id,
+                firstname: staff.firstname,
+                lastname: staff.lastname,
+                email: staff.email,
+                createdAt: staff.createdAt,
+                role: 'staff'
+            } : undefined
         }
 
         if (!user) {

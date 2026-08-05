@@ -3,6 +3,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Patient } from "../models";
 import { AuthRequest } from "../types/type";
 import Admin from "../models/Admin";
+import Staff from "../models/Staff";
 
 export const authenticate = async (
   req: AuthRequest,
@@ -53,7 +54,11 @@ export const authenticate = async (
             }
         }
 
-        if (!patient && !admin) {
+        const staff = await Staff.findByPk(decoded.id, {
+            attributes: { exclude: ["password"] }
+        })
+
+        if (!patient && !admin && !staff) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid token",
