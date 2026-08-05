@@ -566,9 +566,7 @@ export const getPatientUpcomingAppointments = async (req: AuthRequest, res: Resp
                 appointmentDate: {
                     [Op.gt]: today,
                 },
-                status: {
-                    [Op.in]: ["Approved", "Rescheduled"],
-                },
+                status: "Approved",
             },
         });
 
@@ -697,9 +695,7 @@ export const getUpcomingAppointments = async (
                 appointmentDate: {
                     [Op.gt]: today,
                 },
-                status: {
-                    [Op.in]: ["Approved", "Rescheduled"],
-                },
+                status: "Approved",
             },
         });
 
