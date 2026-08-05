@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from 'jsonwebtoken';
 import { Patient } from '../models/index';
 import { generateAccessToken, generateRefreshToken } from "../utils/auth";
-import Admin from "../models/Admin";
+import { Admin } from '../models/index';
 import Staff from "../models/Staff";
 
 export const refreshAccessToken = async (

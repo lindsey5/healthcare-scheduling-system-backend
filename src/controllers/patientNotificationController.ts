@@ -28,6 +28,10 @@ export const getPatientNotifications = async (req: AuthRequest, res: Response, n
                         {
                             model: Doctor,
                             as: 'doctor'
+                        },
+                        {
+                            model: Patient,
+                            as: 'patient'
                         }
                     ],
                     as: 'appointment'

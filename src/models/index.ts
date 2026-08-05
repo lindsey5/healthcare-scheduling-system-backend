@@ -1,3 +1,5 @@
+import Admin from "./Admin";
+import AdminNotification from "./AdminNotification";
 import Appointment from "./Appointment";
 import AppointmentRecord from "./AppointmentRecord";
 import Doctor from "./Doctor";
@@ -8,6 +10,8 @@ import Service from "./Service";
 
 Patient.hasMany(Appointment, { foreignKey: 'patientId', as: 'appointments' });
 Patient.hasMany(PatientNotification, { foreignKey: 'patientId', as: "patientNotification" });
+
+Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotification" });
 
 Appointment.hasOne(AppointmentRecord, { foreignKey: 'appointmentId', as: 'appointRecord' });
 
@@ -30,6 +34,9 @@ AppointmentRecord.belongsTo(Appointment, { foreignKey: "appointmentId", as: "app
 PatientNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
 PatientNotification.belongsTo(Patient, { foreignKey: "patientId", as: "patient" });
 
+AdminNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
+AdminNotification.belongsTo(Admin, { foreignKey: "adminId", as: "admin" });
+
 export { 
     Patient, 
     Doctor, 
@@ -37,5 +44,7 @@ export {
     AppointmentRecord,
     Service, 
     DoctorService,
-    PatientNotification
+    PatientNotification,
+    Admin,
+    AdminNotification
 }

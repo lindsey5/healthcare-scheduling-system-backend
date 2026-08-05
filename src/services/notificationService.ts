@@ -39,6 +39,10 @@ export default class NotificationService {
                                 model: Doctor,
                                 as: "doctor",
                             },
+                            {
+                                model: Patient,
+                                as: 'patient'
+                            }
                         ],
                     },
                 ],

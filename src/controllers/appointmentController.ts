@@ -393,22 +393,7 @@ export const cancelAppointment = async (req: AuthRequest, res: Response, next: N
 
         if(appointment.patientId !== req.user.id) return res.status(401).json({ message: "You are not authorized to access this appointment." })
 
-        const allowedTransitions: Record<string, string[]> = {
-            Pending: ["Approved", "Rejected", "Cancelled"],
-            Approved: ["Checked In", "Reschedule", "No Show", "Cancelled"],
-            "Checked In": ["Completed"],
-            "Completed" : [],
-            "Cancelled" : [],
-            "Rejected" : [],
-            "Rescheduled" : ["Completed"]
-        };
-
-        const currentStatus = appointment.status;
-
-        const allowedNextStatuses = allowedTransitions[currentStatus] || [];
-
-        if (!allowedNextStatuses.includes("Cancelled")) {
-
+        if (appointment.status !== 'Pending') {
             return res.status(400).json({
                 success: false,
                 message: `Cannot cancel appointment. Please reload the page`,
