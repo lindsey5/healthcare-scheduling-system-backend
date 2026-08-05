@@ -4,6 +4,7 @@ import { Appointment, AppointmentRecord, Doctor, Service, } from '../models/inde
 import { Op, or, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
+import NotificationService from "../services/notificationService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -365,6 +366,12 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         appointment.status = status;
 
         await appointment.save();
+
+        await NotificationService.sendPatientNotification({
+            appointmentId: appointment.id,
+            message: `${appointment.referenceNumber} has been updated from ${currentStatus} to ${status}`,
+            patientId: appointment.patientId
+        })
 
         return res.status(200).json({
             appointment,
