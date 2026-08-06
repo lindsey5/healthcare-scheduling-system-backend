@@ -53,4 +53,14 @@ export default class NotificationService {
 
         emitPatientNotification(notificationWithRelations, `${patientId}-patient`);
     }
+
+    static async sendAdminNotification ({
+        appointmentId
+    } : 
+    {
+        appointmentId: string;
+        message: string;
+    }) {
+
+    }
 }

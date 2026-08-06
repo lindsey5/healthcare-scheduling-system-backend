@@ -210,7 +210,7 @@ export const getPatients = async (req: Request, res: Response, next: NextFunctio
 
         const search = (req.query.search as string) || "";
 
-        const where: any = {};
+        const where: any = { isVerified: true };
 
         if(search) {
             where[Op.or] = [
