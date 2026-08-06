@@ -256,7 +256,7 @@ export const getPatients = async (req: Request, res: Response, next: NextFunctio
 
 export const getTotalPatients = async (req: Request, res:Response, next: NextFunction) => {
     try{
-        const total = await Patient.count();
+        const total = await Patient.count({ where: { isVerified: true }});
 
         return res.status(200).json({ total });
 
