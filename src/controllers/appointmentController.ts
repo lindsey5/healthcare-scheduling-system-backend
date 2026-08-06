@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
-import { Appointment, AppointmentRecord, Doctor, Service, } from '../models/index';
-import { Op, or, Sequelize } from "sequelize";
+import { Appointment, AppointmentRecord, Doctor, Patient, Service, } from '../models/index';
+import { Op, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 import NotificationService from "../services/notificationService";
@@ -63,6 +63,44 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             message: "Appointment successfully submitted",
         });
         
+    }catch(err){
+        next(err);
+    }
+}
+
+export const getAppointmentByReferenceNumber = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const appointment = await Appointment.findOne({
+            where: {
+                referenceNumber: req.params.referenceNumber
+            },
+            include: [
+                {
+                    model: Doctor,
+                    as: "doctor",
+                },
+                {
+                    model: Service,
+                    as: "service",
+                },
+                {
+                    model: Patient,
+                    attributes: {
+                        exclude: ["password", "verificationCode", "verificationCodeExpiresAt"],
+                    },
+                    as: 'patient'
+                },
+                {
+                    model: AppointmentRecord,
+                    as: 'appointmentRecord'
+                }
+            ],
+        });
+
+        if(!appointment) return res.status(404).json({ message: "Appointment not found." });
+
+        res.status(200).json({ appointment })
+
     }catch(err){
         next(err);
     }
