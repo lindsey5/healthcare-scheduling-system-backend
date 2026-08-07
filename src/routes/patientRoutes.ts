@@ -5,6 +5,7 @@ import {
     verifyPatient,
     getPatients,
     getTotalPatients,
+    resendVerificationCode,
 } from "../controllers/patientController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
@@ -23,6 +24,11 @@ router.post(
 router.post(
     "/login",
     loginPatient
+);
+
+router.post(
+    "/resend-verification-code", 
+    resendVerificationCode
 );
 
 router.get(

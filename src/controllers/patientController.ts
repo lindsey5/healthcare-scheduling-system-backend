@@ -71,6 +71,54 @@ export const registerPatient = async (
     }
 };
 
+export const resendVerificationCode = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const email = req.body.email;
+
+        const patient = await Patient.findOne({
+            where: { email },
+        });
+
+        if (!patient) {
+            return res.status(400).json({
+                message: "We couldn't find an account with this email address.",
+            });
+        }
+
+        if (patient.isVerified) {
+            return res.status(400).json({
+                message: "This email address has already been verified.",
+            });
+        }
+
+        const verification = await sendVerificationCode(email);
+
+        if (!verification) {
+            return res.status(400).json({
+                message:
+                    "We couldn't resend your verification code. Please try again in a few moments.",
+            });
+        }
+
+        const { expiresAt, verificationCode } = verification;
+
+        patient.verificationCode = verificationCode;
+        patient.verificationCodeExpiresAt = expiresAt;
+
+        await patient.save();
+
+        return res.status(200).json({
+            message:
+                "A new verification code has been sent to your email address.",
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 
 export const verifyPatient = async (
     req: Request,

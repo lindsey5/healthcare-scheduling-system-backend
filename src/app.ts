@@ -14,10 +14,10 @@ import adminNotificationRoutes from "./routes/adminNotificationRoutes";
 
 const app = express();
 
-const origin = process.env.origin;
+const origins = process.env.ORIGINS?.split(",") || ['http://localhost:5173'];
 
 app.use(cors({
-    origin,
+    origin: origins,
     credentials: true
 }));
 
