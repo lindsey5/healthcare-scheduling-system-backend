@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import staffRoutes from "./routes/staffRoutes";
 import patientNotificationRoutes from "./routes/patientNoficationRoutes";
+import adminNotificationRoutes from "./routes/adminNotificationRoutes";
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/staffs', staffRoutes);
 app.use('/api/patient-notifications', patientNotificationRoutes);
+app.use('/api/admin-notifications', adminNotificationRoutes);
 app.use(errorHandler);
 
 export default app;

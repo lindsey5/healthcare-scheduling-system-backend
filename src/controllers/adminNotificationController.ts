@@ -1,15 +1,15 @@
 import { NextFunction, Response } from "express";
-import { Appointment, AppointmentRecord, Doctor, Patient, PatientNotification, Service } from "../models/index";
+import { Appointment, AppointmentRecord, Doctor, Patient, AdminNotification, Service } from "../models/index";
 import { AuthRequest } from "../types/type";
 
-export const getPatientNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getAdminNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit; 
 
-        const { count: total, rows: patientNotifications } = await PatientNotification.findAndCountAll({
-            where: { patientId: req.user.id },
+        const { count: total, rows: adminNotifications } = await AdminNotification.findAndCountAll({
+            where: { adminId: req.user.id },
             order: [["createdAt", "DESC"]],
             limit,
             offset,
@@ -39,15 +39,15 @@ export const getPatientNotifications = async (req: AuthRequest, res: Response, n
             ]
         })
 
-        const unread = await PatientNotification.count({
+        const unread = await AdminNotification.count({
             where: {
-                patientId: req.user.id,
+                adminId: req.user.id,
                 isRead: false
             }
         })
 
         return res.status(200).json({
-            patientNotifications,
+            adminNotifications,
             page,
             limit,
             totalPages: Math.ceil(total / limit),
@@ -60,17 +60,17 @@ export const getPatientNotifications = async (req: AuthRequest, res: Response, n
     }
 }
 
-export const readPatientNotification = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const readAdminNotification = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
-        const patientNotification = await PatientNotification.findByPk(Number(req.params.id));
+        const adminNotification = await AdminNotification.findByPk(Number(req.params.id));
 
-        if(!patientNotification) return res.status(404).json({ message: "Notification not found." });
+        if(!adminNotification) return res.status(404).json({ message: "Notification not found." });
 
-        if(patientNotification.patientId !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
+        if(adminNotification.adminId !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
 
-        patientNotification.isRead = true;
+        adminNotification.isRead = true;
 
-        await patientNotification.save();
+        await adminNotification.save();
 
         res.status(200);
 
@@ -79,14 +79,14 @@ export const readPatientNotification = async (req: AuthRequest, res: Response, n
     }
 }
 
-export const readAllPatientNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const readAllAdminNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
-        await PatientNotification.update({
+        await AdminNotification.update({
             isRead: true
         }, 
         {
             where: {
-                patientId: req.user.id,
+                adminId: req.user.id,
                 isRead: false,
             }
         })
