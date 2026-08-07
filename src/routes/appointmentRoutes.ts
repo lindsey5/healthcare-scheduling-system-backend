@@ -97,8 +97,6 @@ router.get(
 
 router.get(
     '/:referenceNumber',
-    authenticate,
-    authorize("admin", "staff"),
     getAppointmentByReferenceNumber
 )
 
