@@ -54,6 +54,13 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             ...req.body.appointmentRecord,
             appointmentId: appointment.id
         });
+
+        const message = `New appointment has been submitted for ${isValid.serviceName} on ${appointment.appointmentDate} at ${appointment.appointmentTime}.`;
+
+        NotificationService.sendAdminNotification({
+            appointmentId: appointment.id,
+            message
+        })
         
         res.status(200).json({
             appointment: {
@@ -440,6 +447,13 @@ export const cancelAppointment = async (req: AuthRequest, res: Response, next: N
 
         appointment.status = "Cancelled";
         await appointment.save();
+
+        const message = `${appointment.referenceNumber} has been cancelled`;
+
+        NotificationService.sendAdminNotification({
+            appointmentId: appointment.id,
+            message
+        })
 
         return res.status(200).json({ 
             appointment,
