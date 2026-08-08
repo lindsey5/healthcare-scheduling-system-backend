@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { Op, Sequelize } from "sequelize";
-import Staff from "../models/Staff";
+import { Staff } from "../models/index";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
 import { AuthRequest } from "../types/type";
 

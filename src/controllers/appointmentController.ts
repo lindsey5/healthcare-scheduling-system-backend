@@ -5,6 +5,7 @@ import { Op, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 import NotificationService from "../services/notificationService";
+import { formatTime } from "../utils/date";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -55,9 +56,14 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             appointmentId: appointment.id
         });
 
-        const message = `New appointment has been submitted for ${isValid.serviceName} on ${appointment.appointmentDate} at ${appointment.appointmentTime}.`;
+        const message = `New appointment has been submitted for ${isValid.serviceName} on ${appointment.appointmentDate} at ${formatTime(appointment.appointmentTime)}.`;
 
         NotificationService.sendAdminNotification({
+            appointmentId: appointment.id,
+            message
+        })
+
+        NotificationService.sendStaffNotification({
             appointmentId: appointment.id,
             message
         })
@@ -451,6 +457,11 @@ export const cancelAppointment = async (req: AuthRequest, res: Response, next: N
         const message = `${appointment.referenceNumber} has been cancelled`;
 
         NotificationService.sendAdminNotification({
+            appointmentId: appointment.id,
+            message
+        })
+
+        NotificationService.sendStaffNotification({
             appointmentId: appointment.id,
             message
         })

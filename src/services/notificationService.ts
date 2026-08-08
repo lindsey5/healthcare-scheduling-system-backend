@@ -1,6 +1,7 @@
-import { Admin, AdminNotification, Appointment, AppointmentRecord, Doctor, Patient, PatientNotification, Service} from '../models/index';
+import { Admin, AdminNotification, Appointment, AppointmentRecord, Doctor, Patient, PatientNotification, Service, Staff, StaffNotification} from '../models/index';
 import { emitAdminNotification } from '../sockets/namespaces/admin-notification.namespace';
 import { emitPatientNotification } from '../sockets/namespaces/patient-notification.namespace';
+import { emitStaffNotification } from '../sockets/namespaces/staff-notification.namespace';
 
 export default class NotificationService {
     static async sendPatientNotification ({
@@ -114,6 +115,68 @@ export default class NotificationService {
         }catch(err : any){
             throw new Error(err.message)
         }
+    }
 
+    static async sendStaffNotification({
+        appointmentId,
+        message,
+    }: {
+        appointmentId: string;
+        message: string;
+    }) {
+        try {
+            const staffs = await Staff.findAll();
+
+            for (const staff of staffs) {
+                const notification =
+                    await StaffNotification.create({
+                        staffId: staff.id,
+                        appointmentId,
+                        message,
+                    });
+
+                const notificationWithRelations =
+                    await StaffNotification.findByPk(
+                        notification.id,
+                        {
+                            include: [
+                                {
+                                    model: Appointment,
+                                    as: "appointment",
+                                    include: [
+                                        {
+                                            model: AppointmentRecord,
+                                            as: "appointmentRecord",
+                                        },
+                                        {
+                                            model: Service,
+                                            as: "service",
+                                        },
+                                        {
+                                            model: Doctor,
+                                            as: "doctor",
+                                        },
+                                        {
+                                            model: Patient,
+                                            as: "patient",
+                                        },
+                                    ],
+                                },
+                            ],
+                        }
+                    );
+
+                if (!notificationWithRelations) {
+                    continue;
+                }
+
+                emitStaffNotification(
+                    notificationWithRelations,
+                    `${staff.id}-staff`
+                );
+            }
+        } catch (err: any) {
+            throw new Error(err.message);
+        }
     }
 }

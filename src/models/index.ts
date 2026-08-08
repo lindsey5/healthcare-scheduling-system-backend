@@ -7,11 +7,15 @@ import DoctorService from "./DoctorService";
 import Patient from "./Patient";
 import PatientNotification from "./PatientNotification";
 import Service from "./Service";
+import Staff from "./Staff";
+import StaffNotification from "./StaffNotification";
 
 Patient.hasMany(Appointment, { foreignKey: 'patientId', as: 'appointments' });
 Patient.hasMany(PatientNotification, { foreignKey: 'patientId', as: "patientNotification" });
 
 Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotification" });
+
+Staff.hasMany(StaffNotification, { foreignKey: "staffId", as: "staffNotification"})
 
 Appointment.hasOne(AppointmentRecord, { foreignKey: 'appointmentId', as: 'appointRecord' });
 
@@ -23,8 +27,11 @@ Doctor.hasMany(DoctorService, { foreignKey: 'doctorId', as: 'doctorServices' });
 Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 Appointment.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
 Appointment.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
+
 Appointment.hasOne(AppointmentRecord, { foreignKey: "appointmentId", as: "appointmentRecord" });
 Appointment.hasOne(PatientNotification, { foreignKey: 'appointmentId', as: 'patientNotification' });
+Appointment.hasOne(AdminNotification, { foreignKey: "appointmentId", as: "adminNotification" });
+Appointment.hasOne(StaffNotification, { foreignKey: "appointmentId", as: "staffNotification" });
 
 DoctorService.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
 DoctorService.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
@@ -37,14 +44,19 @@ PatientNotification.belongsTo(Patient, { foreignKey: "patientId", as: "patient" 
 AdminNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
 AdminNotification.belongsTo(Admin, { foreignKey: "adminId", as: "admin" });
 
+StaffNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
+StaffNotification.belongsTo(Staff, { foreignKey: "staffId", as: "staff" })
+
 export { 
     Patient, 
+    Admin,
+    Staff,
     Doctor, 
     Appointment, 
     AppointmentRecord,
     Service, 
     DoctorService,
     PatientNotification,
-    Admin,
-    AdminNotification
+    AdminNotification,
+    StaffNotification
 }
