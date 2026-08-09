@@ -7,6 +7,7 @@ import {
     verifyPassword,
 } from "../utils/auth";
 import { Op, Sequelize } from "sequelize";
+import { AuthRequest } from "../types/type";
 
 export const registerPatient = async (
     req: Request,
@@ -307,6 +308,83 @@ export const getTotalPatients = async (req: Request, res:Response, next: NextFun
         const total = await Patient.count({ where: { isVerified: true }});
 
         return res.status(200).json({ total });
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const patientUpdateOwn = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { firstname, lastname, email } = req.body;
+
+        const patient = await Patient.findOne({
+            where: {
+                id: req.user.id,
+                isVerified: true
+            }
+        })
+
+        if(!patient) return res.status(404).json({ message: "Account not found." })
+
+        patient.firstname = firstname;
+        patient.lastname = lastname;
+        patient.email = email;
+
+        await patient.save();
+
+        return res.status(200).json({ message: "Profile successfully updated."})
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const patientChangePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { newPassword, currentPassword } = req.body;
+
+        const patient = await Patient.findOne({
+            where: {
+                id: req.user.id,
+                isVerified: true
+            }
+        });
+
+        if(!patient) return res.status(404).json({ message: "Account not found." });
+
+        const isMatch = await verifyPassword(currentPassword, patient.password);
+
+        if(!isMatch) return res.status(403).json({ message: "Current password is incorrect"})
+
+        const isSamePassword = await verifyPassword(newPassword, patient.password);
+
+        if(isSamePassword) return res.status(400).json({  message: "New password must be different from current password", });
+
+        patient.password = newPassword;
+
+        return res.status(200).json({ message: "Password successfully changed" });
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const { email } = req.body;
+
+        const patient = await Patient.findOne({
+            where: {
+                email,
+                isVerified: true
+            }
+        })
+
+        if(!patient) return res.status(404).json({ message: "Email not found." });
+
+        
+
 
     }catch(err){
         next(err);
