@@ -6,6 +6,7 @@ import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 import NotificationService from "../services/notificationService";
 import { formatTime } from "../utils/date";
+import { sendAppointmentUpdate } from "../services/emailService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -388,12 +389,19 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         const id = req.params.id;
         const status = req.body.status as AppointmentAttributes['status'];
 
-        const appointment = await Appointment.findByPk(String(id));
+        const appointment = await Appointment.findByPk(String(id), {
+            include: [
+                {
+                    model: Patient,
+                    as: 'patient'
+                }
+            ]
+        });
 
         if(!appointment) return res.status(404).json({ message: "Appointment not found." });
 
         const allowedTransitions: Record<string, string[]> = {
-            Pending: ["Approved", "Rejected", "Cancelled"],
+            Pending: ["Approved", "Rejected"],
             Approved: ["Checked In", "Reschedule", "No Show", "Cancelled"],
             "Checked In": ["Completed"],
             "Completed" : [],
@@ -422,6 +430,13 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
             appointmentId: appointment.id,
             message: `${appointment.referenceNumber} has been updated from ${currentStatus} to ${status}`,
             patientId: appointment.patientId
+        })
+
+        await sendAppointmentUpdate({
+            referenceNumber: appointment.referenceNumber,
+            email: (appointment as any).patient.email,
+            prevStatus: currentStatus,
+            newStatus: status
         })
 
         return res.status(200).json({

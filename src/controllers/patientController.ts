@@ -314,9 +314,9 @@ export const getTotalPatients = async (req: Request, res:Response, next: NextFun
     }
 }
 
-export const patientUpdateOwn = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const updatePatientOwn = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
-        const { firstname, lastname, email } = req.body;
+        const { firstname, lastname } = req.body;
 
         const patient = await Patient.findOne({
             where: {
@@ -329,11 +329,20 @@ export const patientUpdateOwn = async (req: AuthRequest, res: Response, next: Ne
 
         patient.firstname = firstname;
         patient.lastname = lastname;
-        patient.email = email;
 
         await patient.save();
 
-        return res.status(200).json({ message: "Profile successfully updated."})
+        return res.status(200).json({ 
+            user: {
+                id: patient.id,
+                firstname: patient.firstname,
+                lastname: patient.lastname,
+                email: patient.email,
+                createdAt: patient.createdAt,
+                role: 'patient'
+            }, 
+            message: "Profile successfully updated."
+        })
 
     }catch(err){
         next(err);
@@ -363,7 +372,9 @@ export const patientChangePassword = async (req: AuthRequest, res: Response, nex
 
         patient.password = newPassword;
 
-        return res.status(200).json({ message: "Password successfully changed" });
+        return res.status(200).json({ 
+            message: "Password successfully changed", 
+        });
 
     }catch(err){
         next(err);

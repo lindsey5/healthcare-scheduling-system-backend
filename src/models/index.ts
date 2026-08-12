@@ -2,8 +2,10 @@ import Admin from "./Admin";
 import AdminNotification from "./AdminNotification";
 import Appointment from "./Appointment";
 import AppointmentRecord from "./AppointmentRecord";
+import Conversation from "./Conversation";
 import Doctor from "./Doctor";
 import DoctorService from "./DoctorService";
+import Message from "./Message";
 import Patient from "./Patient";
 import PatientNotification from "./PatientNotification";
 import Service from "./Service";
@@ -11,11 +13,13 @@ import Staff from "./Staff";
 import StaffNotification from "./StaffNotification";
 
 Patient.hasMany(Appointment, { foreignKey: 'patientId', as: 'appointments' });
-Patient.hasMany(PatientNotification, { foreignKey: 'patientId', as: "patientNotification" });
+Patient.hasMany(PatientNotification, { foreignKey: 'patientId', as: "patientNotifications" });
+Patient.hasMany(Conversation, { foreignKey: "patientId", as: "patientConversations" });
 
-Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotification" });
+Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotifications" });
 
-Staff.hasMany(StaffNotification, { foreignKey: "staffId", as: "staffNotification"})
+Staff.hasMany(StaffNotification, { foreignKey: "staffId", as: "staffNotifications"});
+Staff.hasMany(Conversation, { foreignKey: "patientId", as: "staffConversations" });
 
 Appointment.hasOne(AppointmentRecord, { foreignKey: 'appointmentId', as: 'appointRecord' });
 
@@ -45,7 +49,13 @@ AdminNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "app
 AdminNotification.belongsTo(Admin, { foreignKey: "adminId", as: "admin" });
 
 StaffNotification.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
-StaffNotification.belongsTo(Staff, { foreignKey: "staffId", as: "staff" })
+StaffNotification.belongsTo(Staff, { foreignKey: "staffId", as: "staff" });
+
+Conversation.hasMany(Message, { foreignKey: "conversationId", as: 'messages' });
+Conversation.belongsTo(Patient, { foreignKey: "patientId", as: "patient" });
+Conversation.belongsTo(Staff, { foreignKey: "assignedStaffId", as: "staff" });
+
+Message.belongsTo(Conversation, { foreignKey: "conversationId", as: "conversation" });
 
 export { 
     Patient, 
@@ -58,5 +68,7 @@ export {
     DoctorService,
     PatientNotification,
     AdminNotification,
-    StaffNotification
+    StaffNotification,
+    Conversation,
+    Message
 }

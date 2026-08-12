@@ -6,6 +6,8 @@ import {
     getPatients,
     getTotalPatients,
     resendVerificationCode,
+    updatePatientOwn,
+    patientChangePassword,
 } from "../controllers/patientController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
@@ -43,6 +45,20 @@ router.get(
     authenticate,
     authorize("staff", "admin"),
     getTotalPatients
+)
+
+router.put(
+    '/me',
+    authenticate,
+    authorize('patient'),
+    updatePatientOwn
+)
+
+router.put(
+    '/change-password',
+    authenticate,
+    authorize('patient'),
+    patientChangePassword
 )
 
 const patientRoutes = router;
