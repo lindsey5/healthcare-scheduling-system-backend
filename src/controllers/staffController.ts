@@ -211,3 +211,88 @@ export const deleteStaff = async (
         next(err);
     }
 };
+
+export const updateStaffProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { firstname, lastname, email } = req.body;
+
+        const isExisting = await Staff.findOne({
+            where: {
+                email,
+                id: { [Op.ne] : req.user.id }
+            },
+            attributes: {
+                exclude: ["password"],
+            },
+        });
+
+        if(isExisting){
+            return res.status(409).json({
+                message: "Email already used."
+            })
+        }
+
+        const staff = await Staff.findOne({
+            where: {
+                id: req.user.id,
+            }
+        })
+
+        if(!staff) return res.status(404).json({ message: "Account not found." })
+
+        staff.firstname = firstname;
+        staff.lastname = lastname;
+        staff.email = email;
+
+        await staff.save();
+
+        return res.status(200).json({ 
+            user: {
+                id: staff.id,
+                firstname: staff.firstname,
+                lastname: staff.lastname,
+                email: staff.email,
+                createdAt: staff.createdAt,
+                role: 'staff'
+            }, 
+            message: "Profile successfully updated."
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const staffChangePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { newPassword, currentPassword } = req.body;
+
+        const staff = await Staff.findOne({
+            where: {
+                id: req.user.id,
+
+            }
+        });
+
+        if(!staff) return res.status(404).json({ message: "Account not found." });
+
+        const isMatch = await verifyPassword(currentPassword, staff.password);
+
+        if(!isMatch) return res.status(403).json({ message: "Current password is incorrect"})
+
+        const isSamePassword = await verifyPassword(newPassword, staff.password);
+
+        if(isSamePassword) return res.status(400).json({  message: "New password must be different from current password", });
+
+        staff.password = newPassword;
+
+        await staff.save();
+
+        return res.status(200).json({ 
+            message: "Password successfully changed", 
+        });
+
+    }catch(err){
+        next(err);
+    }
+}

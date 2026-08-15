@@ -372,6 +372,8 @@ export const patientChangePassword = async (req: AuthRequest, res: Response, nex
 
         patient.password = newPassword;
 
+        await patient.save();
+
         return res.status(200).json({ 
             message: "Password successfully changed", 
         });

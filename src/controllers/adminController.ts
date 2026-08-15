@@ -176,3 +176,88 @@ export const deleteAdmin = async (req: Request, res: Response, next: NextFunctio
         next(err);
     }
 }
+
+export const updateAdminProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { firstname, lastname, email } = req.body;
+
+        const isExisting = await Admin.findOne({
+            where: {
+                email,
+                id: { [Op.ne] : req.user.id }
+            },
+            attributes: {
+                exclude: ["password"],
+            },
+        });
+
+        if(isExisting){
+            return res.status(409).json({
+                message: "Email already used."
+            })
+        }
+
+        const admin = await Admin.findOne({
+            where: {
+                id: req.user.id,
+            }
+        })
+
+        if(!admin) return res.status(404).json({ message: "Account not found." })
+
+        admin.firstname = firstname;
+        admin.lastname = lastname;
+        admin.email = email;
+
+        await admin.save();
+
+        return res.status(200).json({ 
+            user: {
+                id: admin.id,
+                firstname: admin.firstname,
+                lastname: admin.lastname,
+                email: admin.email,
+                createdAt: admin.createdAt,
+                role: 'admin'
+            }, 
+            message: "Profile successfully updated."
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const adminChangePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const { newPassword, currentPassword } = req.body;
+
+        const admin = await Admin.findOne({
+            where: {
+                id: req.user.id,
+
+            }
+        });
+
+        if(!admin) return res.status(404).json({ message: "Account not found." });
+
+        const isMatch = await verifyPassword(currentPassword, admin.password);
+
+        if(!isMatch) return res.status(403).json({ message: "Current password is incorrect"})
+
+        const isSamePassword = await verifyPassword(newPassword, admin.password);
+
+        if(isSamePassword) return res.status(400).json({  message: "New password must be different from current password", });
+
+        admin.password = newPassword;
+
+        await admin.save();
+
+        return res.status(200).json({ 
+            message: "Password successfully changed", 
+        });
+
+    }catch(err){
+        next(err);
+    }
+}

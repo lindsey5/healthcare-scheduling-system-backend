@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createAdmin, deleteAdmin, getAdmins, loginAdmin, updateAdmin } from "../controllers/adminController";
+import { adminChangePassword, createAdmin, deleteAdmin, getAdmins, loginAdmin, updateAdmin, updateAdminProfile } from "../controllers/adminController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -21,6 +21,20 @@ router.get(
     authenticate,
     authorize("admin"),
     getAdmins
+)
+
+router.put(
+    '/me',
+    authenticate,
+    authorize("admin"),
+    updateAdminProfile
+)
+
+router.put(
+    '/change-password',
+    authenticate,
+    authorize("admin"),
+    adminChangePassword
 )
 
 router.put(

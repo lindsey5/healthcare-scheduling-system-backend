@@ -4,7 +4,9 @@ import {
     deleteStaff,
     getStaffs,
     loginStaff,
+    staffChangePassword,
     updateStaff,
+    updateStaffProfile,
 } from "../controllers/staffController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
@@ -26,6 +28,20 @@ router.get(
     authorize("admin"),
     getStaffs
 );
+
+router.put(
+    '/me',
+    authenticate,
+    authorize("staff"),
+    updateStaffProfile
+)
+
+router.put(
+    '/change-password',
+    authenticate,
+    authorize("staff"),
+    staffChangePassword
+)
 
 router.put(
     "/:id",
