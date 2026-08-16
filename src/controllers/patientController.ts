@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { Patient } from '../models/index';
-import { sendVerificationCode } from "../services/emailService";
+import { sendResetPassword, sendVerificationCode } from "../services/emailService";
 import {
     generateAccessToken,
     generateRefreshToken,
@@ -8,6 +8,9 @@ import {
 } from "../utils/auth";
 import { Op, Sequelize } from "sequelize";
 import { AuthRequest } from "../types/type";
+import crypto from 'crypto';
+import ResetToken from "../models/ResetToken";
+import { sequelize } from "../config/db";
 
 export const registerPatient = async (
     req: Request,
@@ -383,23 +386,141 @@ export const patientChangePassword = async (req: AuthRequest, res: Response, nex
     }
 }
 
-export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
-    try{
+export const forgotPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const transaction = await sequelize.transaction();
+
+    try {
         const { email } = req.body;
 
         const patient = await Patient.findOne({
             where: {
                 email,
-                isVerified: true
+                isVerified: true,
+            },
+            transaction,
+        });
+
+        // Keep the same response to avoid revealing whether
+        // an email belongs to an account.
+        if (!patient) {
+            await transaction.commit();
+
+            return res.status(200).json({
+                message:
+                    "If an account exists with that email, a password reset link has been sent.",
+            });
+        }
+
+        const resetToken = crypto.randomBytes(32).toString("hex");
+
+        const expiresAt = new Date(
+            Date.now() + 15 * 60 * 1000
+        );
+
+        // invalidate previous reset tokens
+        await ResetToken.destroy({
+            where: {
+                patientId: patient.id,
+            },
+            transaction,
+        });
+
+        await ResetToken.create(
+            {
+                resetToken,
+                patientId: patient.id,
+                expiresAt,
+            },
+            {
+                transaction,
             }
-        })
+        );
 
-        if(!patient) return res.status(404).json({ message: "Email not found." });
+        await transaction.commit();
 
-        
+        const resetUrl =
+            `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
+        const isSent = await sendResetPassword(
+            patient.email,
+            resetUrl
+        );
 
-    }catch(err){
+        if (!isSent) {
+            return res.status(500).json({
+                message: "Unable to send password reset email.",
+            });
+        }
+
+        return res.status(200).json({
+            message:
+                "If an account exists with that email, a password reset link has been sent.",
+        });
+
+    } catch (err) {
+        await transaction.rollback();
         next(err);
     }
-}
+};
+
+export const resetPassword = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const { token, password } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({
+                message: "Reset token and new password are required.",
+            });
+        }
+
+        const resetToken = await ResetToken.findOne({
+            where: {
+                resetToken: token,
+            },
+        });
+
+        if (!resetToken) {
+            return res.status(400).json({
+                message: "Invalid or expired password reset link.",
+            });
+        }
+
+        if (resetToken.expiresAt < new Date()) {
+            await resetToken.destroy();
+
+            return res.status(400).json({
+                message: "Invalid or expired password reset link.",
+            });
+        }
+
+        const patient = await Patient.findByPk(resetToken.patientId);
+
+        if (!patient) {
+            return res.status(404).json({
+                message: "Account not found.",
+            });
+        }
+
+        patient.password = password;
+
+        await patient.save();
+
+        // Invalidate the reset token
+        await resetToken.destroy();
+
+        return res.status(200).json({
+            message: "Password reset successfully.",
+        });
+
+    } catch (err) {
+        next(err);
+    }
+};

@@ -178,3 +178,130 @@ export const appointmentUpdateTemplate = ({
         </div>
     </div>
 `;
+
+export const resetPasswordTemplate = (resetUrl: string) => `
+    <div style="
+        font-family: Arial, Helvetica, sans-serif;
+        background:#f3f4f6;
+        padding:40px 20px;
+    ">
+        <div style="
+            max-width:500px;
+            margin:auto;
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        ">
+
+            <div style="
+                background:#1E3D15;
+                color:white;
+                text-align:center;
+                padding:24px;
+            ">
+                <h2 style="margin:0;">
+                    Bagumbayan Healthcare Scheduling System
+                </h2>
+            </div>
+
+            <div style="padding:32px;">
+
+                <h3 style="
+                    color:#1E3D15;
+                    margin-top:0;
+                ">
+                    Reset Your Password
+                </h3>
+
+                <p style="
+                    line-height:1.6;
+                    color:#555;
+                ">
+                    We received a request to reset the password
+                    for your
+                    <strong>Bagumbayan Healthcare Scheduling System</strong>
+                    account.
+                </p>
+
+                <p style="
+                    line-height:1.6;
+                    color:#555;
+                ">
+                    Click the button below to create a new password.
+                </p>
+
+                <div style="
+                    text-align:center;
+                    margin:30px 0;
+                ">
+                    <a
+                        href="${resetUrl}"
+                        style="
+                            display:inline-block;
+                            background:#1E3D15;
+                            color:#fff;
+                            text-decoration:none;
+                            padding:14px 28px;
+                            border-radius:8px;
+                            font-weight:bold;
+                            font-size:16px;
+                        "
+                    >
+                        Reset Password
+                    </a>
+                </div>
+
+                <p style="
+                    line-height:1.6;
+                    color:#666;
+                ">
+                    This password reset link will expire in
+                    <strong>15 minutes</strong>.
+                </p>
+
+                <p style="
+                    line-height:1.6;
+                    color:#666;
+                ">
+                    If you did not request a password reset, you can
+                    safely ignore this email. Your password will remain
+                    unchanged.
+                </p>
+
+                <p style="
+                    line-height:1.6;
+                    color:#888;
+                    font-size:13px;
+                    margin-top:25px;
+                ">
+                    If the button above does not work, copy and paste
+                    the following link into your browser:
+                </p>
+
+                <p style="
+                    word-break:break-all;
+                    font-size:13px;
+                    color:#1E3D15;
+                ">
+                    ${resetUrl}
+                </p>
+
+            </div>
+
+            <div style="
+                background:#F8F8F8;
+                text-align:center;
+                padding:18px;
+                font-size:13px;
+                color:#777;
+            ">
+                © ${new Date().getFullYear()}
+                Bagumbayan Healthcare Scheduling System
+                <br/>
+                Barangay Bagumbayan Health Center
+            </div>
+
+        </div>
+    </div>
+`;

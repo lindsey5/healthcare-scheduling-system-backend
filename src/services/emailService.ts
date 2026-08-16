@@ -1,6 +1,6 @@
 import { BrevoClient } from '@getbrevo/brevo';
 import dotenv from "dotenv";
-import { appointmentUpdateTemplate, verificationCodeTemplate } from '../templates/emailTemplates';
+import { appointmentUpdateTemplate, resetPasswordTemplate, verificationCodeTemplate } from '../templates/emailTemplates';
 
 dotenv.config();
 
@@ -93,5 +93,44 @@ export const sendAppointmentUpdate = async ({
         );
 
         return false;
+    }
+};
+
+export const sendResetPassword = async (
+    email: string,
+    resetUrl: string
+) => {
+    try {
+        await brevo.transactionalEmails.sendTransacEmail({
+            sender: {
+                name: "Bagumbayan Healthcare Scheduling System",
+                email: process.env.EMAIL_USER!,
+            },
+
+            to: [
+                {
+                    email,
+                },
+            ],
+
+            subject: "Reset Your Password",
+
+            htmlContent: resetPasswordTemplate(resetUrl),
+        });
+
+        console.log(
+            "Password reset email sent successfully to",
+            email
+        );
+
+        return true;
+
+    } catch (err) {
+        console.error(
+            "Failed to send password reset email:",
+            err
+        );
+
+        return null;
     }
 };

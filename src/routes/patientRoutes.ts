@@ -8,6 +8,8 @@ import {
     resendVerificationCode,
     updatePatientOwn,
     patientChangePassword,
+    forgotPassword,
+    resetPassword,
 } from "../controllers/patientController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
@@ -32,6 +34,16 @@ router.post(
     "/resend-verification-code", 
     resendVerificationCode
 );
+
+router.post(
+    '/forgot-password',
+    forgotPassword
+);
+
+router.patch(
+    '/reset-password',
+    resetPassword
+)
 
 router.get(
     '/',
