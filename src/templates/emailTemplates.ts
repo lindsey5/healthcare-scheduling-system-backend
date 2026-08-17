@@ -1,3 +1,4 @@
+import { formatTime } from "../utils/date";
 
 export const verificationCodeTemplate = (verificationCode: string) => `
     <div style="
@@ -419,7 +420,7 @@ export const appointmentRescheduledTemplate = ({
                     </p>
 
                     <p style="margin:6px 0;color:#666;">
-                        <strong>Time:</strong> ${previousTime}
+                        <strong>Time:</strong> ${formatTime(previousTime)}
                     </p>
                 </div>
 
@@ -442,7 +443,7 @@ export const appointmentRescheduledTemplate = ({
                     </p>
 
                     <p style="margin:6px 0;color:#555;">
-                        <strong>Time:</strong> ${newTime}
+                        <strong>Time:</strong> ${formatTime(newTime)}
                     </p>
 
                     <p style="margin:6px 0;color:#555;">
