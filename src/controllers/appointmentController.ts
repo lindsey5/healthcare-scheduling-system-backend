@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
-import { Appointment, AppointmentRecord, Doctor, Patient, Service, } from '../models/index';
+import { Appointment, AppointmentRecord, AppointmentReschedule, Doctor, Patient, Service, } from '../models/index';
 import { Op, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
@@ -554,7 +554,6 @@ export const getAvailableTimeSlot = async (
         const appointments = await Appointment.findAll({
             where: {
                 appointmentDate,
-                serviceId,
                 status: {
                     [Op.ne]: "Cancelled",
                 },
@@ -636,7 +635,7 @@ export const getPatientUpcomingAppointments = async (req: AuthRequest, res: Resp
                 appointmentDate: {
                     [Op.gt]: today,
                 },
-                status: "Approved",
+                status: { [Op.in] : ['Approved', 'Rescheduled']}
             },
         });
 
@@ -765,7 +764,7 @@ export const getUpcomingAppointments = async (
                 appointmentDate: {
                     [Op.gt]: today,
                 },
-                status: "Approved",
+                status: { [Op.in] : ['Approved', 'Rescheduled']}
             },
         });
 
@@ -777,7 +776,7 @@ export const getUpcomingAppointments = async (
     }
 };
 
-export const getCancelledAppointments = async (req: Request, res: Response, next: NextFunction) => {
+export const getCancelledAppointments = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const cancelledAppointments = await Appointment.count({
             where: {
@@ -802,6 +801,100 @@ export const getMonthlyAppointments = async (req: Request, res: Response, next: 
         res.status(200).json({
             monthlyAppointments,
         })
+    }catch(err){
+        next(err);
+    }
+}
+
+export const rescheduleAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const id = String(req.params.id);
+
+        const { newDoctorId, newAppointmentDate, newAppointmentTime, reason } = req.body;
+        
+        const appointment = await Appointment.findByPk(id, {
+            include: [
+                {
+                    model: Service,
+                    as: 'service'
+                },
+                {
+                    model: Patient,
+                    as: "patient"
+                }
+            ]
+        });
+
+        if(!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+
+        const dayOfWeek = new Date(newAppointmentDate).toLocaleDateString("en-US", {
+            weekday: "long",
+            timeZone: "Asia/Manila",
+        });
+
+        const service = await Service.findOne({
+            where: {
+                id: Number(appointment.serviceId),
+            },
+        });
+
+        if (service && service.dayOfWeek !== dayOfWeek) {
+            return res.status(400).json({
+                message: `${(appointment as any).service.serviceName} is only available on ${service.dayOfWeek}`,
+            });
+        }
+
+        const doctorChanged =
+            newDoctorId !== undefined &&
+            newDoctorId !== null &&
+            newDoctorId !== appointment.doctorId;
+
+        const rescheduledByType = req.user.id === 'admin' ? 'Admin' : 'Staff';
+
+        await AppointmentReschedule.create({
+            appointmentId: appointment.id,
+            oldAppointmentDate: appointment.appointmentDate,
+            newAppointmentDate,
+            oldAppointmentTime: appointment.appointmentTime,
+            newAppointmentTime,
+            oldDoctorId: doctorChanged ? appointment.doctorId : null,
+            newDoctorId: doctorChanged ? newDoctorId : null,
+            rescheduledByType,
+            rescheduledByAdminId: rescheduledByType === 'Admin' ? req.user.id : null,
+            rescheduledByStaffId: rescheduledByType !== 'Admin' ? req.user.id : null,
+            reason,
+        })
+
+        if(doctorChanged){
+            appointment.doctorId = newDoctorId
+        }
+
+        const oldStatus = appointment.status;
+
+        appointment.appointmentDate = newAppointmentDate;
+        appointment.appointmentTime = newAppointmentTime;
+        appointment.status = "Rescheduled";
+
+        await appointment.save();
+
+        await NotificationService.sendPatientNotification({
+            appointmentId: appointment.id,
+            message: `${appointment.referenceNumber} has been Rescheduled`,
+            patientId: appointment.patientId
+        })
+
+        await sendAppointmentUpdate({
+            referenceNumber: appointment.referenceNumber,
+            email: (appointment as any).patient.email,
+            prevStatus: oldStatus,
+            newStatus: "Rescheduled"
+        })
+
+        res.status(200).json({
+            message: "Appointment successfully rescheduled",
+            appointment
+        })
+
     }catch(err){
         next(err);
     }

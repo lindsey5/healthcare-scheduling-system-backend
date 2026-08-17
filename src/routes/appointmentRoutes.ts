@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { cancelAppointment, createAppointment, getAppointmentByReferenceNumber, getAppointments, getAvailableTimeSlot, getCancelledAppointments, getCompletedAppointments, getMonthlyAppointments, getMyAppointments, getPatientCompletedAppointments, getPatientPendingAppointments, getPatientUpcomingAppointments, getPendingAppointments, getTodayAppointments, getUpcomingAppointments, updateAppointmentStatus } from "../controllers/appointmentController";
+import { cancelAppointment, createAppointment, getAppointmentByReferenceNumber, getAppointments, getAvailableTimeSlot, getCancelledAppointments, getCompletedAppointments, getMonthlyAppointments, getMyAppointments, getPatientCompletedAppointments, getPatientPendingAppointments, getPatientUpcomingAppointments, getPendingAppointments, getTodayAppointments, getUpcomingAppointments, rescheduleAppointment, updateAppointmentStatus } from "../controllers/appointmentController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -35,7 +35,7 @@ router.get(
 router.get(
     "/available-time",
     authenticate,
-    authorize("patient"),
+    authorize("patient", "admin", "staff"),
     getAvailableTimeSlot
 )
 
@@ -98,6 +98,13 @@ router.get(
 router.get(
     '/:referenceNumber',
     getAppointmentByReferenceNumber
+)
+
+router.patch(
+    '/reschedule/:id',
+    authenticate,
+    authorize('patient', 'admin'),
+    rescheduleAppointment
 )
 
 router.patch(
