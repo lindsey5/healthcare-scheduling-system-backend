@@ -1,6 +1,6 @@
 import { BrevoClient } from '@getbrevo/brevo';
 import dotenv from "dotenv";
-import { appointmentUpdateTemplate, resetPasswordTemplate, verificationCodeTemplate } from '../templates/emailTemplates';
+import { appointmentRescheduledTemplate, appointmentUpdateTemplate, resetPasswordTemplate, verificationCodeTemplate } from '../templates/emailTemplates';
 
 dotenv.config();
 
@@ -128,6 +128,69 @@ export const sendResetPassword = async (
     } catch (err) {
         console.error(
             "Failed to send password reset email:",
+            err
+        );
+
+        return null;
+    }
+};
+
+export const sendRescheduleUpdate = async (
+    email: string,
+    {
+        referenceNumber,
+        previousDate,
+        previousTime,
+        newDate,
+        newTime,
+        doctorName,
+        reason,
+    }: {
+        referenceNumber: string;
+        previousDate: string;
+        previousTime: string;
+        newDate: string;
+        newTime: string;
+        doctorName: string;
+        reason: string;
+    }
+) => {
+    try {
+        await brevo.transactionalEmails.sendTransacEmail({
+            sender: {
+                name: "Bagumbayan Healthcare Scheduling System",
+                email: process.env.EMAIL_USER!,
+            },
+
+            to: [
+                {
+                    email,
+                },
+            ],
+
+            subject: "Your Appointment Has Been Rescheduled",
+
+            htmlContent: appointmentRescheduledTemplate({
+                referenceNumber,
+                previousDate,
+                previousTime,
+                newDate,
+                newTime,
+                doctorName,
+                reason,
+            }),
+        });
+
+        console.log(
+            "Appointment reschedule email sent successfully to",
+            email
+        );
+
+        return true;
+
+    } catch (err) {
+        console.error(
+            "Failed to send appointment reschedule email:",
             err
         );
 

@@ -305,3 +305,175 @@ export const resetPasswordTemplate = (resetUrl: string) => `
         </div>
     </div>
 `;
+
+
+export const appointmentRescheduledTemplate = ({
+    referenceNumber,
+    previousDate,
+    previousTime,
+    newDate,
+    newTime,
+    doctorName,
+    reason,
+}: {
+    referenceNumber: string;
+    previousDate: string;
+    previousTime: string;
+    newDate: string;
+    newTime: string;
+    doctorName: string;
+    reason: string;
+}) => `
+    <div style="
+        font-family: Arial, Helvetica, sans-serif;
+        background:#f3f4f6;
+        padding:40px 20px;
+    ">
+        <div style="
+            max-width:500px;
+            margin:auto;
+            background:#fff;
+            border-radius:12px;
+            overflow:hidden;
+            box-shadow:0 4px 12px rgba(0,0,0,.08);
+        ">
+
+            <div style="
+                background:#1E3D15;
+                color:white;
+                text-align:center;
+                padding:24px;
+            ">
+                <h2 style="margin:0;">
+                    Bagumbayan Healthcare Scheduling System
+                </h2>
+            </div>
+
+            <div style="padding:32px;">
+
+                <h3 style="
+                    color:#1E3D15;
+                    margin-top:0;
+                ">
+                    Appointment Rescheduled
+                </h3>
+
+                <p style="
+                    line-height:1.6;
+                    color:#555;
+                ">
+                    Your appointment has been <strong>rescheduled</strong>.
+                    Please review your updated appointment details below.
+                </p>
+
+                <div style="
+                    background:#FFF8E1;
+                    border-left:4px solid #1E3D15;
+                    border-radius:8px;
+                    padding:16px;
+                    margin:25px 0;
+                ">
+                    <p style="margin:0;color:#555;line-height:1.6;">
+                        <strong>Reason:</strong> ${reason}
+                    </p>
+                </div>
+
+                <div style="
+                    background:#F8F8F8;
+                    border-radius:10px;
+                    padding:20px;
+                    margin:25px 0;
+                ">
+                    <p style="
+                        margin:8px 0;
+                        color:#555;
+                    ">
+                        <strong>Reference Number:</strong>
+                        ${referenceNumber}
+                    </p>
+
+                    <p style="
+                        margin:8px 0;
+                        color:#555;
+                    ">
+                        <strong>Doctor:</strong>
+                        ${doctorName}
+                    </p>
+                </div>
+
+                <p style="
+                    margin:20px 0 10px;
+                    color:#777;
+                    font-weight:bold;
+                ">
+                    Previous Appointment
+                </p>
+
+                <div style="
+                    background:#F8F8F8;
+                    border-radius:10px;
+                    padding:15px;
+                ">
+                    <p style="margin:6px 0;color:#666;">
+                        <strong>Date:</strong> ${previousDate}
+                    </p>
+
+                    <p style="margin:6px 0;color:#666;">
+                        <strong>Time:</strong> ${previousTime}
+                    </p>
+                </div>
+
+                <p style="
+                    margin:20px 0 10px;
+                    color:#1E3D15;
+                    font-weight:bold;
+                ">
+                    New Appointment
+                </p>
+
+                <div style="
+                    background:#E8F5E9;
+                    border:1px solid #C8E6C9;
+                    border-radius:10px;
+                    padding:15px;
+                ">
+                    <p style="margin:6px 0;color:#555;">
+                        <strong>Date:</strong> ${newDate}
+                    </p>
+
+                    <p style="margin:6px 0;color:#555;">
+                        <strong>Time:</strong> ${newTime}
+                    </p>
+
+                    <p style="margin:6px 0;color:#555;">
+                        <strong>Doctor:</strong> ${doctorName}
+                    </p>
+                </div>
+
+                <p style="
+                    line-height:1.6;
+                    color:#666;
+                    margin-top:25px;
+                ">
+                    Please log in to the Bagumbayan Healthcare Scheduling
+                    System to view your updated appointment details.
+                </p>
+
+            </div>
+
+            <div style="
+                background:#F8F8F8;
+                text-align:center;
+                padding:18px;
+                font-size:13px;
+                color:#777;
+            ">
+                © ${new Date().getFullYear()}
+                Bagumbayan Healthcare Scheduling System
+                <br/>
+                Barangay Bagumbayan Health Center
+            </div>
+
+        </div>
+    </div>
+`;

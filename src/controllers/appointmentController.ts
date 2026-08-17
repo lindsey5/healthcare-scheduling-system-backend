@@ -6,7 +6,7 @@ import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
 import NotificationService from "../services/notificationService";
 import { formatTime } from "../utils/date";
-import { sendAppointmentUpdate } from "../services/emailService";
+import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -821,6 +821,10 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
                 {
                     model: Patient,
                     as: "patient"
+                },
+                {
+                    model: Doctor,
+                    as: 'doctor'
                 }
             ]
         });
@@ -869,7 +873,8 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             appointment.doctorId = newDoctorId
         }
 
-        const oldStatus = appointment.status;
+        const prevDate = appointment.appointmentDate;
+        const prevTime = appointment.appointmentTime;
 
         appointment.appointmentDate = newAppointmentDate;
         appointment.appointmentTime = newAppointmentTime;
@@ -883,11 +888,14 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             patientId: appointment.patientId
         })
 
-        await sendAppointmentUpdate({
-            referenceNumber: appointment.referenceNumber,
-            email: (appointment as any).patient.email,
-            prevStatus: oldStatus,
-            newStatus: "Rescheduled"
+        await sendRescheduleUpdate((appointment as any).patient.email, {
+            doctorName: `${(appointment as any).doctor.firstname} ${(appointment as any).doctor.lastname}`,
+            previousDate: String(prevDate),
+            newDate: newAppointmentDate,
+            previousTime: prevTime,
+            newTime: newAppointmentTime,
+            reason,
+            referenceNumber: appointment.referenceNumber
         })
 
         res.status(200).json({
