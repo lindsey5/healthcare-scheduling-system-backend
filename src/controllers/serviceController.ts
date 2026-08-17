@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Service, Appointment } from '../models/index';
+import { Service } from '../models/index';
 import { Op } from "sequelize";
 
 export const createService = async (req: Request, res: Response, next: NextFunction) => {
