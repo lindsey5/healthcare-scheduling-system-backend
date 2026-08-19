@@ -22,8 +22,6 @@ Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotification
 Staff.hasMany(StaffNotification, { foreignKey: "staffId", as: "staffNotifications"});
 Staff.hasMany(Conversation, { foreignKey: "patientId", as: "staffConversations" });
 
-Appointment.hasOne(AppointmentRecord, { foreignKey: 'appointmentId', as: 'appointRecord' });
-
 Service.hasMany(Appointment, { foreignKey: 'serviceId', as: 'appointments' });
 
 Doctor.hasMany(Appointment, { foreignKey: 'doctorId', as: 'appointments' });
@@ -37,7 +35,7 @@ Appointment.hasOne(AppointmentRecord, { foreignKey: "appointmentId", as: "appoin
 Appointment.hasOne(PatientNotification, { foreignKey: 'appointmentId', as: 'patientNotification' });
 Appointment.hasOne(AdminNotification, { foreignKey: "appointmentId", as: "adminNotification" });
 Appointment.hasOne(StaffNotification, { foreignKey: "appointmentId", as: "staffNotification" });
-Appointment.hasMany(AppointmentReschedule, { foreignKey: "appointmentId", as: "appointmentReshedules" })
+Appointment.hasMany(AppointmentReschedule, { foreignKey: "appointmentId", as: "appointmentReschedules" })
 
 AppointmentReschedule.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
 

@@ -1,14 +1,26 @@
 import { Namespace, Socket } from "socket.io";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import dotenv from "dotenv";
-import { Patient } from "../models";
-import Admin from "../models/Admin";
-import Staff from "../models/Staff";
+import { Patient, Admin, Staff } from "../models/index";
 
 dotenv.config();
 
-type SocketEvents = {
-    [eventName: string]: (data?: any) => void | Promise<void>;
+export type SocketUser = {
+    id: number;
+    role: "patient" | "admin" | "staff";
+};
+
+export type SocketEvents = {
+    [eventName: string]: (
+        socket: AuthenticatedSocket,
+        data?: any
+    ) => void | Promise<void>;
+};
+
+export type AuthenticatedSocket = Socket & {
+    data: {
+        user: SocketUser;
+    };
 };
 
 export default function socketConnection({
@@ -20,7 +32,7 @@ export default function socketConnection({
     message: string;
     events?: SocketEvents;
 }) {
-    namespace.on("connection", async (socket: Socket) => {
+    namespace.on("connection", async (socket) => {
         try {
             const authHeader = socket.handshake.auth?.token;
 
@@ -75,27 +87,32 @@ export default function socketConnection({
                     throw new Error("Invalid role.");
             }
 
-            // Save authenticated user on socket
-            socket.data.user = {
+            const user: SocketUser = {
                 id: userId,
                 role: decoded.role,
             };
 
-            // Join personal room
+            socket.data.user = user;
+
+            // Personal room
             socket.join(`${userId}-${decoded.role}`);
 
-            console.log(message, {
-                id: userId,
-                role: decoded.role
-            });
+            console.log(message, user);
 
             if (events) {
                 for (const [eventName, callback] of Object.entries(events)) {
-                    socket.on(eventName, callback);
+                    socket.on(eventName, (data) => {
+                        callback(socket, data);
+                    });
                 }
             }
+
         } catch (err: any) {
-            console.error("Socket connection error:", err.message);
+            console.error(
+                "Socket connection error:",
+                err.message
+            );
+
             socket.disconnect(true);
         }
     });

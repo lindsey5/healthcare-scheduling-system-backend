@@ -1,6 +1,6 @@
 import { col, fn, Op, Order, WhereOptions } from "sequelize";
 import { AppointmentAttributes } from "../models/Appointment";
-import { Appointment, Doctor, Service, AppointmentRecord, Patient } from '../models/index';
+import { Appointment, Doctor, Service, AppointmentRecord, Patient, AppointmentReschedule } from '../models/index';
 
 const monthNames = [
     "Jan",
@@ -50,8 +50,13 @@ export default class AppointmentService {
                 {
                     model: AppointmentRecord,
                     as: 'appointmentRecord'
+                },
+                {
+                    model: AppointmentReschedule,
+                    as: 'appointmentReschedules'
                 }
             ],
+            distinct: true,
             order,
             limit,
             offset,

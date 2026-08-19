@@ -7,9 +7,7 @@ dotenv.config();
 
 export let staffNotificationNamespace: Namespace;
 
-export function initStaffNotificationNamespace(
-    io: SocketIOServer
-) {
+export function initStaffNotificationNamespace(io: SocketIOServer) {
     staffNotificationNamespace = io.of("/staff-notification");
 
     socketConnection({
@@ -18,10 +16,7 @@ export function initStaffNotificationNamespace(
     });
 }
 
-export function emitStaffNotification(
-    notification: StaffNotification,
-    to: string
-) {
+export function emitStaffNotification(notification: StaffNotification, to: string) {
     if (!staffNotificationNamespace) return;
 
     console.log("Staff notification sent.");

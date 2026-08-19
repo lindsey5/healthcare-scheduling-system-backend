@@ -7,14 +7,12 @@ interface ConversationAttributes {
     assignedStaffId: number | null;
     status: "Waiting" | "Active" | "Closed";
     createdAt: Date;
-    acceptedAt: Date | null;
-    closedAt: Date | null;
 }
 
 interface ConversationCreationAttributes
     extends Optional<
         ConversationAttributes,
-        "id" | "assignedStaffId" | "acceptedAt" | "closedAt" | "createdAt"
+        "id" | "assignedStaffId" | "createdAt"
     > {}
 
 class Conversation extends Model<
@@ -62,16 +60,6 @@ Conversation.init(
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW,
-        },
-
-        acceptedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-        },
-
-        closedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
         },
     },
     {

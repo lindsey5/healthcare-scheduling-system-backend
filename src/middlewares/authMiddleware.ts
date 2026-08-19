@@ -58,6 +58,13 @@ export const authenticate = async (
             attributes: { exclude: ["password"] }
         })
 
+        if(staff) {
+            req.user = {
+                ...staff.toJSON(),
+                role: 'staff'
+            }
+        }
+
         if (!patient && !admin && !staff) {
             return res.status(401).json({
                 success: false,

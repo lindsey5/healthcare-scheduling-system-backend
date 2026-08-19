@@ -107,6 +107,10 @@ export const getAppointmentByReferenceNumber = async (req: Request, res: Respons
                 {
                     model: AppointmentRecord,
                     as: 'appointmentRecord'
+                },
+                {
+                    model: AppointmentReschedule,
+                    as: 'appointmentReschedules'
                 }
             ],
         });
