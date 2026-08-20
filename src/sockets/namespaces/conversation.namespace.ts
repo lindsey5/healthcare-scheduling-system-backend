@@ -2,6 +2,7 @@ import type { Server as SocketIOServer, Namespace } from "socket.io";
 import dotenv from 'dotenv';
 import socketConnection, { AuthenticatedSocket } from "../socketConnection";
 import { Conversation, Message } from '../../models/index';
+import { Op } from "sequelize";
 dotenv.config();
 
 export let conversationNamespace: Namespace;
@@ -25,14 +26,14 @@ export function initConversationNamespace(io: SocketIOServer) {
 
                 const staffConversation = await Conversation.findOne({
                     where: {
-                        assignedStaffId: socket.data.user.id
+                        assignedStaffId: availableSocket.data.user.id
                     }
                 })
 
                 const conversation = await Conversation.findOne({
                     where: {
                         patientId: socket.data.user.id,
-                        status: "Waiting",
+                        status: { [Op.in] : ['Active', 'Waiting']}
                     },
                 });
 
@@ -42,7 +43,7 @@ export function initConversationNamespace(io: SocketIOServer) {
                 }
 
                 conversation.status = "Active";
-                conversation.assignedStaffId = conversation?.assignedStaffId;
+                conversation.assignedStaffId = availableSocket.data.user.id;
 
                 await conversation.save();
 
