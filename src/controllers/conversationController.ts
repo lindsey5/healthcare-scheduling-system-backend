@@ -33,8 +33,30 @@ export const getPatientConversation = async (req: AuthRequest, res: Response, ne
 
         const { count: total, rows } = await Message.findAndCountAll({
             where: {
-                conversationId: conversation.id
+                conversationId: conversation.id,
             },
+            include:[
+                {
+                    model: Patient,
+                    as: "patientSender",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+                {
+                    model: Staff,
+                    as: "staffSender",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+            ],
             order: [["createdAt", "DESC"]],
             limit,
             offset
@@ -86,6 +108,28 @@ export const getStaffConversation = async (req: AuthRequest, res: Response, next
             where: {
                 conversationId: conversation.id
             },
+            include:[
+                {
+                    model: Patient,
+                    as: "patientSender",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+                {
+                    model: Staff,
+                    as: "staffSender",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+            ],
             order: [["createdAt", "DESC"]],
             limit,
             offset
