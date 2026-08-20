@@ -14,77 +14,109 @@ export function initConversationNamespace(io: SocketIOServer) {
         namespace: conversationNamespace, 
         message: "User connected to conversation namespace",
         events: {
-            "conversation:start": async (socket: AuthenticatedSocket) => {
-                const sockets = await conversationNamespace.fetchSockets();
-
-                const availableSocket = sockets.find(s => s.data.user.role === "staff");
-
-                if (!availableSocket) {
-                    socket.emit("conversation:status", false);
-                    return;
-                }
-
-                const staffConversation = await Conversation.findOne({
-                    where: {
-                        assignedStaffId: availableSocket.data.user.id
-                    }
-                })
-
-                const conversation = await Conversation.findOne({
-                    where: {
-                        patientId: socket.data.user.id,
-                        status: { [Op.in] : ['Active', 'Waiting']}
-                    },
-                });
-
-                if (!conversation || staffConversation) {
-                    socket.emit("conversation:status", false);
-                    return;
-                }
-
-                conversation.status = "Active";
-                conversation.assignedStaffId = availableSocket.data.user.id;
-
-                await conversation.save();
-
-                // Tell patient
-                socket.emit("conversation:status", true);
-
-                // Tell staff
-                availableSocket.emit("conversation:new", conversation.id);
-            },
-            "message:send": async (socket: AuthenticatedSocket, {
-                conversationId,
-                message,
-                senderType
-            } : {
-                message: string;
-                conversationId: number;
-                senderType: "Patient" | "Staff";
-            }) => {
-                const conversation = await Conversation.findOne({
-                    where: {
-                        id: conversationId,
-                    }
-                });
-
-                if(!conversation) return;
-
-                if(conversation.assignedStaffId !== socket.data.user.id && conversation.patientId !== socket.data.user.id) return;
-
-                const newMessage = await Message.create({
-                    conversationId,
-                    message,
-                    senderId: socket.data.user.id,
-                    senderType
-                })
-
-                const to = senderType === 'Patient' ? conversation.assignedStaffId : conversation.patientId;
-
-                conversationNamespace
-                    .to(`${to}-${senderType === 'Patient' ? 'staff' : 'patient'}`)
-                    .emit("message:new", newMessage)
-            }
+            "conversation:start": startConversation,
+            "message:send": sendMessage,
+            "conversation:end": endConversation
         }
     })
+}
+
+const endConversation = async (socket: AuthenticatedSocket, conversationId: number) => {
+    const role = socket.data.user.id;
+    const conversation = await Conversation.findByPk(conversationId);
+
+    if(!conversation) return;
+
+    const to = role === 'Patient' ? conversation.assignedStaffId : conversation.patientId;
+
+    conversation.assignedStaffId = null;
+    conversation.status = "Closed";
+
+    await conversation.save();
+
+    conversationNamespace.
+        to(`${to}-${role === 'Patient' ? 'staff' : 'patient'}`)
+        .emit("conversation:end")
+}
+
+const startConversation = async (socket: AuthenticatedSocket) => {
+    const sockets = await conversationNamespace.fetchSockets();
+
+    const availableSocket = sockets.find(s => s.data.user.role === "staff");
+
+    const conversation = await Conversation.findOne({
+        where: {
+            patientId: socket.data.user.id,
+            status: { [Op.in] : ['Closed', 'Waiting']}
+        },
+    });
+
+    if (!conversation) {
+        socket.emit("conversation:status", false);
+        return;
+    }
+
+    if (!availableSocket) {
+        console.log('hahae')
+        conversation.status = "Waiting";
+        await conversation.save();
+        socket.emit("conversation:status", false);
+        return;
+    }
+
+    const staffConversation = await Conversation.findOne({
+        where: {
+            assignedStaffId: availableSocket.data.user.id
+        }
+    })
+
+    if (staffConversation) {
+        console.log('haha')
+        socket.emit("conversation:status", false);
+        return;
+    }
+
+    conversation.status = "Active";
+    conversation.assignedStaffId = availableSocket.data.user.id;
+
+    await conversation.save();
+
+    // Tell patient
+    socket.emit("conversation:status", true);
+
+    // Tell staff
+    availableSocket.emit("conversation:new", conversation.id);
+}
+
+const sendMessage = async (socket: AuthenticatedSocket, {
+    conversationId,
+    message,
+    senderType
+} : {
+    message: string;
+    conversationId: number;
+    senderType: "Patient" | "Staff";
+}) => {
+    const conversation = await Conversation.findOne({
+        where: {
+            id: conversationId,
+        }
+    });
+
+    if(!conversation) return;
+
+    if(conversation.assignedStaffId !== socket.data.user.id && conversation.patientId !== socket.data.user.id) return;
+
+    const newMessage = await Message.create({
+        conversationId,
+        message,
+        senderId: socket.data.user.id,
+        senderType
+    })
+
+    const to = senderType === 'Patient' ? conversation.assignedStaffId : conversation.patientId;
+
+    conversationNamespace
+        .to(`${to}-${senderType === 'Patient' ? 'staff' : 'patient'}`)
+        .emit("message:new", newMessage)
 }

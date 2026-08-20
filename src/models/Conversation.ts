@@ -27,8 +27,6 @@ class Conversation extends Model<
     declare status: "Waiting" | "Active" | "Closed";
 
     declare createdAt: Date;
-    declare acceptedAt: Date | null;
-    declare closedAt: Date | null;
 }
 
 Conversation.init(
