@@ -22,12 +22,12 @@ export function initConversationNamespace(io: SocketIOServer) {
 }
 
 const endConversation = async (socket: AuthenticatedSocket, conversationId: number) => {
-    const role = socket.data.user.id;
+    const role = socket.data.user.role;
     const conversation = await Conversation.findByPk(conversationId);
 
     if(!conversation) return;
 
-    const to = role === 'Patient' ? conversation.assignedStaffId : conversation.patientId;
+    const to = role === 'patient' ? conversation.assignedStaffId : conversation.patientId;
 
     conversation.assignedStaffId = null;
     conversation.status = "Closed";
@@ -35,7 +35,7 @@ const endConversation = async (socket: AuthenticatedSocket, conversationId: numb
     await conversation.save();
 
     conversationNamespace.
-        to(`${to}-${role === 'Patient' ? 'staff' : 'patient'}`)
+        to(`${to}-${role === 'patient' ? 'staff' : 'patient'}`)
         .emit("conversation:end")
 }
 
@@ -57,7 +57,6 @@ const startConversation = async (socket: AuthenticatedSocket) => {
     }
 
     if (!availableSocket) {
-        console.log('hahae')
         conversation.status = "Waiting";
         await conversation.save();
         socket.emit("conversation:status", false);
@@ -71,7 +70,6 @@ const startConversation = async (socket: AuthenticatedSocket) => {
     })
 
     if (staffConversation) {
-        console.log('haha')
         socket.emit("conversation:status", false);
         return;
     }

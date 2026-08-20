@@ -31,14 +31,16 @@ export const getPatientConversation = async (req: AuthRequest, res: Response, ne
             })
         }
 
-        const { count: total, rows: messages } = await Message.findAndCountAll({
+        const { count: total, rows } = await Message.findAndCountAll({
             where: {
                 conversationId: conversation.id
             },
-            order: [["createdAt", "ASC"]],
+            order: [["createdAt", "DESC"]],
             limit,
             offset
         })
+
+        const messages = rows.reverse();
 
         return res.status(200).json({
             messages,
@@ -80,14 +82,16 @@ export const getStaffConversation = async (req: AuthRequest, res: Response, next
             return res.status(404).json({ message: "No conversation yet" });
         }
 
-        const { count: total, rows: messages } = await Message.findAndCountAll({
+        const { count: total, rows } = await Message.findAndCountAll({
             where: {
                 conversationId: conversation.id
             },
-            order: [["createdAt", "ASC"]],
+            order: [["createdAt", "DESC"]],
             limit,
             offset
         })
+
+        const messages = rows.reverse();
 
         return res.status(200).json({
             messages,
