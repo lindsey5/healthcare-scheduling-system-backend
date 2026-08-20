@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
-import { getPatientConversation, getStaffConversation } from "../controllers/conversationController";
+import { getConversations, getMessages, getPatientConversation, getStaffConversation } from "../controllers/conversationController";
 
 const router = Router();
 
@@ -16,6 +16,20 @@ router.get(
     authenticate,
     authorize("staff"),
     getStaffConversation
+)
+
+router.get(
+    '/',
+    authenticate,
+    authorize('admin'),
+    getConversations
+)
+
+router.get(
+    '/messages/:id',
+    authenticate,
+    authorize('admin'),
+    getMessages
 )
 
 const conversationRoutes = router;

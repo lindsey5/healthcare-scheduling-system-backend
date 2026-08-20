@@ -1,4 +1,4 @@
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
 import { Conversation, Message, Patient, Staff } from "../models/index";
 
@@ -140,6 +140,57 @@ export const getStaffConversation = async (req: AuthRequest, res: Response, next
         return res.status(200).json({
             messages,
             conversation,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            total
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const getConversations = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const conversations = await Conversation.findAll({
+            include: [
+                {
+                    model: Patient,
+                    as: 'patient'
+                }
+            ]
+        });
+
+        return res.status(200).json({
+            conversations
+        })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const getMessages = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        const id = req.params.id;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const { count: total, rows } = await Message.findAndCountAll({
+            where:{
+                conversationId: id
+            },
+            order: [["createdAt", "DESC"]],
+            limit,
+            offset
+        })
+
+        const messages = rows.reverse();
+
+        return res.status(200).json({
+            messages,
             page,
             limit,
             totalPages: Math.ceil(total / limit),
