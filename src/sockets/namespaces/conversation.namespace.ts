@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import socketConnection, { AuthenticatedSocket } from "../socketConnection";
 import { Conversation, Message, Patient } from '../../models/index';
 import { Op } from "sequelize";
+import sequelize from "sequelize/lib/sequelize";
 dotenv.config();
 
 export let conversationNamespace: Namespace;
@@ -36,7 +37,7 @@ const endConversation = async (socket: AuthenticatedSocket, conversationId: numb
 
     conversationNamespace.
         to(`${to}-${role === 'patient' ? 'staff' : 'patient'}`)
-        .emit("conversation:end")
+        .emit("conversation:end", conversation.id)
 }
 
 const startConversation = async (socket: AuthenticatedSocket) => {
@@ -89,7 +90,21 @@ const startConversation = async (socket: AuthenticatedSocket) => {
                     model: Patient,
                     as: "patient",
                 },
-            ]
+            ],
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COUNT(*)
+                            FROM messages AS m
+                            WHERE m.conversationId = ${conversation.id}
+                            AND m.unread = true
+                            AND m.senderType = 'Patient'
+                        )`),
+                        "unread",
+                    ],
+                ],
+            },
         });
 
         if(!conversationWithPatient) return;

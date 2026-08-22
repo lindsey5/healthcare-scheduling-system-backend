@@ -180,7 +180,7 @@ export const getStaffConversations = async (req: AuthRequest, res: Response, nex
                             AND m.unread = true
                             AND m.senderType = 'Patient'
                         )`),
-                        "unreadCount",
+                        "unread",
                     ],
                 ],
             },
@@ -265,7 +265,7 @@ export const getConversations = async (req: Request, res: Response, next: NextFu
                             AND m.unread = true
                             AND m.senderType = 'Patient'
                         )`),
-                        "unreadCount",
+                        "unread",
                     ],
                 ],
             },
