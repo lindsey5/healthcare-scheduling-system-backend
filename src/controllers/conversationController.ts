@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
 import { Conversation, Message, Patient, Staff } from "../models/index";
+import { Op } from "sequelize";
+import sequelize from "sequelize/lib/sequelize";
 
 export const getPatientConversation = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -157,9 +159,31 @@ export const getConversations = async (req: Request, res: Response, next: NextFu
             include: [
                 {
                     model: Patient,
-                    as: 'patient'
-                }
-            ]
+                    as: "patient",
+                },
+                {
+                    model: Message,
+                    as: "messages",
+                    separate: true,
+                    limit: 1,
+                    order: [["createdAt", "DESC"]],
+                },
+            ],
+
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COUNT(*)
+                            FROM messages AS m
+                            WHERE m.conversationId = Conversation.id
+                            AND m.unread = true
+                            AND m.senderType = 'Patient'
+                        )`),
+                        "unreadCount",
+                    ],
+                ],
+            },
         });
 
         return res.status(200).json({
@@ -197,6 +221,72 @@ export const getMessages = async (req: Request, res: Response, next: NextFunctio
             total
         })
 
+    }catch(err){
+        next(err);
+    }
+}
+
+export const getUnreadMessages = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const conversation = await Conversation.findOne({
+            where:
+                req.user.role === "patient"
+                    ? { patientId: req.user.id }
+                    : { },
+        });
+
+        if(!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+        const unread = await Message.count({
+            where: {
+                conversationId: conversation.id,
+                senderId: { [Op.ne] : req.user.id },
+                unread: true,
+            }
+        })
+
+        res.status(200).json({ unread });
+    }catch(err){
+        next(err);
+    }
+}
+
+export const handleReadAll = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const conversation = await Conversation.findOne({
+            where: {
+                patientId: req.user.id
+            }
+        });
+
+        if(!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+        await Message.update({ unread: false }, { 
+            where: { 
+                conversationId: conversation.id,
+                senderId: { [Op.ne] : req.user.id }
+            }
+        })
+
+        res.status(200).json({});
+
+    }catch(err){
+        next(err);
+    }
+} 
+
+export const endConversation = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const conversation = await Conversation.findByPk(Number(req.params.id));
+
+        if(!conversation) return res.status(404).json({ message: "Conversation not found" });
+
+        if(conversation.assignedStaffId !== req.user.id) return res.status(403).json({ message: "Unauthorized" });
+
+        conversation.status = 'Closed';
+        await conversation.save();
+
+        return res.status(200).json({ message: "Conversation successfully end" });
     }catch(err){
         next(err);
     }

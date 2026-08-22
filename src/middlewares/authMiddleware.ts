@@ -25,58 +25,89 @@ export const authenticate = async (
         // Verify JWT token
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET as string) as JwtPayload;
 
-        const patient = await Patient.findOne({
-            where: {
-                id: decoded.id,
-                isVerified: true,
-            },
-            attributes: { exclude: ["password"] },
-        })
+        switch (decoded.role) {
+            case "patient": {
+                const patient = await Patient.findOne({
+                    where: {
+                        id: decoded.id,
+                        isVerified: true,
+                    },
+                    attributes: {
+                        exclude: ["password"],
+                    },
+                });
 
-        if(patient){
-            req.user = {
-                ...patient.toJSON(),
-                role: 'patient'
+                if (!patient) {
+                    res.status(401).json({
+                        success: false,
+                        message: "Patient not found",
+                    });
+                    return;
+                }
+
+                req.user = {
+                    ...patient.toJSON(),
+                    role: "patient",
+                };
+
+                next();
+                return;
+            }
+
+            case "admin": {
+                const admin = await Admin.findOne({
+                    where: {
+                        id: decoded.id,
+                    },
+                    attributes: {
+                        exclude: ["password"],
+                    },
+                });
+
+                if (!admin) {
+                    res.status(401).json({
+                        success: false,
+                        message: "Admin not found",
+                    });
+                    return;
+                }
+
+                req.user = {
+                    ...admin.toJSON(),
+                    role: "admin",
+                };
+
+                next();
+                return;
+            }
+
+            case "staff": {
+                const staff = await Staff.findByPk(decoded.id, {
+                    attributes: {
+                        exclude: ["password"],
+                    },
+                });
+
+                if (!staff) {
+                    res.status(401).json({
+                        success: false,
+                        message: "Staff not found",
+                    });
+                    return;
+                }
+
+                req.user = {
+                    ...staff.toJSON(),
+                    role: "staff",
+                };
+
+                next();
+                return;
             }
         }
-
-        const admin = await Admin.findOne({
-            where: {
-                id: decoded.id,
-            },
-            attributes: { exclude: ["password"] },
-        })
-
-        if(admin){
-            req.user = {
-                ...admin.toJSON(),
-                role: 'admin'
-            }
-        }
-
-        const staff = await Staff.findByPk(decoded.id, {
-            attributes: { exclude: ["password"] }
-        })
-
-        if(staff) {
-            req.user = {
-                ...staff.toJSON(),
-                role: 'staff'
-            }
-        }
-
-        if (!patient && !admin && !staff) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid token",
-            });
-        }
-
-        next();
     } catch (error: any) {
         console.log(error);
         return res.status(401).json({
-            success: false,
             message: error.message || "Unauthorized",
         });
     }

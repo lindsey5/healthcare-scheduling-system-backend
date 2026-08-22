@@ -7,11 +7,12 @@ interface MessageAttributes {
     senderId: number;
     senderType: "Patient" | "Staff";
     message: string;
+    unread: boolean;
     createdAt: Date;
 }
 
 interface MessageCreationAttributes
-    extends Optional<MessageAttributes, "id" | "createdAt"> {}
+    extends Optional<MessageAttributes, "id" | "createdAt" | "unread"> {}
 
 class Message extends Model<
     MessageAttributes,
@@ -25,6 +26,8 @@ class Message extends Model<
     declare senderType: "Patient" | "Staff";
 
     declare message: string;
+
+    declare unread: boolean;
 
     declare createdAt: Date;
 }
@@ -56,6 +59,12 @@ Message.init(
         message: {
             type: DataTypes.TEXT,
             allowNull: false,
+        },
+
+        unread: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
         },
 
         createdAt: {
