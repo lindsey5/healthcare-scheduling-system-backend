@@ -28,7 +28,7 @@ router.get(
 router.get(
     '/unread',
     authenticate,
-    authorize('patient'),
+    authorize('patient', 'staff'),
     getUnreadMessages
 )
 
@@ -42,7 +42,7 @@ router.get(
 router.post(
     '/read',
     authenticate,
-    authorize('patient'),
+    authorize('patient', 'staff'),
     handleReadAll
 )
 

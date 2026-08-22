@@ -232,7 +232,7 @@ export const getUnreadMessages = async (req: AuthRequest, res: Response, next: N
             where:
                 req.user.role === "patient"
                     ? { patientId: req.user.id }
-                    : { },
+                    : { assignedStaffId: req.user.id },
         });
 
         if(!conversation) return res.status(404).json({ message: "Conversation not found" });
@@ -254,9 +254,10 @@ export const getUnreadMessages = async (req: AuthRequest, res: Response, next: N
 export const handleReadAll = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const conversation = await Conversation.findOne({
-            where: {
-                patientId: req.user.id
-            }
+            where:
+                req.user.role === "patient"
+                    ? { patientId: req.user.id }
+                    : { assignedStaffId: req.user.id },
         });
 
         if(!conversation) return res.status(404).json({ message: "Conversation not found" });
