@@ -1,7 +1,7 @@
 import type { Server as SocketIOServer, Namespace } from "socket.io";
 import dotenv from 'dotenv';
 import socketConnection, { AuthenticatedSocket } from "../socketConnection";
-import { Conversation, Message } from '../../models/index';
+import { Conversation, Message, Patient } from '../../models/index';
 import { Op } from "sequelize";
 dotenv.config();
 
@@ -42,7 +42,7 @@ const endConversation = async (socket: AuthenticatedSocket, conversationId: numb
 const startConversation = async (socket: AuthenticatedSocket) => {
     const sockets = await conversationNamespace.fetchSockets();
 
-    const availableSocket = sockets.find(s => s.data.user.role === "staff");
+    const availableSockets = sockets.filter(s => s.data.user.role === "staff");
 
     const conversation = await Conversation.findOne({
         where: {
@@ -56,34 +56,49 @@ const startConversation = async (socket: AuthenticatedSocket) => {
         return;
     }
 
-    if (!availableSocket) {
+    if (!availableSockets.length) {
         conversation.status = "Waiting";
         await conversation.save();
         socket.emit("conversation:status", false);
         return;
     }
 
-    const staffConversation = await Conversation.findOne({
-        where: {
-            assignedStaffId: availableSocket.data.user.id
-        }
-    })
+    for(const availableSocket of availableSockets){
+        const staffConversation = await Conversation.findAll({
+            where: {
+                assignedStaffId: availableSocket.data.user.id
+            }
+        })
 
-    if (staffConversation) {
-        socket.emit("conversation:status", false);
+        if (staffConversation.length > 4) {
+            socket.emit("conversation:status", false);
+            continue;
+        }
+
+        conversation.status = "Active";
+        conversation.assignedStaffId = availableSocket.data.user.id;
+
+        await conversation.save();
+
+        // Tell patient
+        socket.emit("conversation:status", true);
+
+        const conversationWithPatient = await Conversation.findByPk(conversation.id, {
+            include: [
+                {
+                    model: Patient,
+                    as: "patient",
+                },
+            ]
+        });
+
+        if(!conversationWithPatient) return;
+
+        // Tell staff
+        availableSocket.emit("conversation:new", conversationWithPatient);
+
         return;
     }
-
-    conversation.status = "Active";
-    conversation.assignedStaffId = availableSocket.data.user.id;
-
-    await conversation.save();
-
-    // Tell patient
-    socket.emit("conversation:status", true);
-
-    // Tell staff
-    availableSocket.emit("conversation:new", conversation.id);
 }
 
 const sendMessage = async (socket: AuthenticatedSocket, {
