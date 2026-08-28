@@ -103,7 +103,7 @@ router.get(
 router.patch(
     '/reschedule/:id',
     authenticate,
-    authorize('patient', 'admin'),
+    authorize('admin', 'staff'),
     rescheduleAppointment
 )
 
