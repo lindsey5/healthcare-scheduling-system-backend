@@ -2,9 +2,11 @@ import { NextFunction, Response, Request } from "express";
 import { Doctor, DoctorService, Service } from "../models/index";
 import { sequelize } from "../config/db";
 import { Op, Sequelize } from "sequelize";
+import { createAudit } from "../services/auditService";
+import { AuthRequest } from "../types/type";
 
 export const createDoctor = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -37,6 +39,23 @@ export const createDoctor = async (
         });
 
         await transaction.commit();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "DOCTOR",
+            entityId: newDoctor.id,
+            oldValues: {},
+            newValues: {
+                firstname: newDoctor.firstname,
+                lastname: newDoctor.lastname,
+                doctorServices
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         return res.status(201).json({
             doctor: newDoctor,
@@ -117,7 +136,7 @@ export const getDoctors = async (
     }
 };
 
-export const deleteDoctor = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteDoctor = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
 
@@ -130,6 +149,23 @@ export const deleteDoctor = async (req: Request, res: Response, next: NextFuncti
         doctor.status = 'Inactive';
         await doctor.save();
 
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DELETE",
+            entity: "Doctor",
+            entityId: doctor.id,
+            oldValues: {
+                firstname: doctor.firstname,
+                lastname: doctor.lastname,
+            },
+            newValues: {},
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
+
+
         res.status(200).json({
             message: "Doctor successfully deleted."
         })
@@ -139,7 +175,7 @@ export const deleteDoctor = async (req: Request, res: Response, next: NextFuncti
     }
 }
 
-export const updateDoctor = async (req: Request, res: Response, next: NextFunction) => {
+export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const transaction = await sequelize.transaction();
     
     try{
@@ -153,11 +189,18 @@ export const updateDoctor = async (req: Request, res: Response, next: NextFuncti
             });
         }
 
-        const doctor = await Doctor.findByPk(Number(id));
+        const doctor = await Doctor.findByPk(Number(id), {
+            include: {
+                model: DoctorService,
+                as: 'doctorServices'
+            }
+        });
 
         if(!doctor){
             return res.status(404).json({ message: "Doctor not found" });
         }
+
+        const oldValues : any = doctor;
 
         doctor.set(rest);
 
@@ -179,6 +222,28 @@ export const updateDoctor = async (req: Request, res: Response, next: NextFuncti
         });
 
         await transaction.commit(); 
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "UPDATE",
+            entity: "Doctor",
+            entityId: doctor.id,
+            oldValues: {
+                firstname: oldValues.firstname,
+                lastname: oldValues.lastname,
+                doctorServices: oldValues.doctorServices
+                
+            },
+            newValues: {
+                firstname: doctor.firstname,
+                lastname: doctor.lastname,
+                doctorServices,
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         return res.status(200).json({
             message: "Doctor successfully updated",

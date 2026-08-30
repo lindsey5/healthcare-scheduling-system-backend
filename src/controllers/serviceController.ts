@@ -1,8 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { Service } from '../models/index';
 import { Op } from "sequelize";
+import { createAudit } from "../services/auditService";
+import { AuthRequest } from "../types/type";
 
-export const createService = async (req: Request, res: Response, next: NextFunction) => {
+export const createService = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { serviceName, dayOfWeek, startTime, endTime } = req.body;
 
@@ -47,6 +49,24 @@ export const createService = async (req: Request, res: Response, next: NextFunct
 
         const service = await Service.create(req.body);
 
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "Service",
+            entityId: service.id,
+            oldValues: {},
+            newValues: {
+                serviceName: service.serviceName,
+                dayOfWeek: service.dayOfWeek,
+                startTime: service.startTime,
+                endTime: service.endTime
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
+
         return res.status(201).json({
             service,
             message: "Service successfully created.",
@@ -80,7 +100,7 @@ export const getServices = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-export const updateService = async (req: Request, res: Response, next: NextFunction) => {
+export const updateService = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { serviceName, dayOfWeek, startTime, endTime } = req.body;
 
@@ -134,9 +154,34 @@ export const updateService = async (req: Request, res: Response, next: NextFunct
             })
         }
 
+        const oldValues = service;
+
         service.set(req.body);
 
         await service.save();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "UPDATE",
+            entity: "Service",
+            entityId: service.id,
+            oldValues: {
+                serviceName: oldValues.serviceName,
+                dayOfWeek: oldValues.dayOfWeek,
+                startTime: oldValues.startTime,
+                endTime: oldValues.endTime
+            },
+            newValues: {
+                serviceName: service.serviceName,
+                dayOfWeek: service.dayOfWeek,
+                startTime: service.startTime,
+                endTime: service.endTime
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         return res.status(201).json({
             service,
@@ -147,7 +192,7 @@ export const updateService = async (req: Request, res: Response, next: NextFunct
     }
 };
 
-export const deleteService = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteService = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
 
@@ -157,6 +202,24 @@ export const deleteService = async (req: Request, res: Response, next: NextFunct
 
         service.status = 'Deleted';
         await service.save();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DELETE",
+            entity: "Service",
+            entityId: service.id,
+            oldValues: {
+                serviceName: service.serviceName,
+                dayOfWeek: service.dayOfWeek,
+                startTime: service.startTime,
+                endTime: service.endTime
+            },
+            newValues: {},
+            severity: "CRITICAL",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         return res.status(200).json({ message: "Service successfully deleted" });
 

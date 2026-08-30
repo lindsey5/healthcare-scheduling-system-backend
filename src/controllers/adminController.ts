@@ -3,8 +3,9 @@ import { Admin } from "../models/index";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
 import { Op, Sequelize } from "sequelize";
 import { AuthRequest } from "../types/type";
+import { createAudit } from "../services/auditService";
 
-export const createAdmin = async (req : Request, res: Response, next: NextFunction) =>{
+export const createAdmin = async (req : AuthRequest, res: Response, next: NextFunction) =>{
     try{
         const isExisting = await Admin.findOne({
             where: {
@@ -19,6 +20,23 @@ export const createAdmin = async (req : Request, res: Response, next: NextFuncti
         }
 
         const admin = await Admin.create(req.body);
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "Admin",
+            entityId: admin.id,
+            oldValues: {},
+            newValues: {
+                firstname: admin.firstname,
+                lastname: admin.lastname,
+                email: admin.email,
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(201).json({
             admin,
@@ -122,7 +140,7 @@ export const getAdmins = async (req: AuthRequest, res: Response, next: NextFunct
     }
 }
 
-export const updateAdmin = async (req : Request, res: Response, next: NextFunction) =>{
+export const updateAdmin = async (req : AuthRequest, res: Response, next: NextFunction) =>{
     try{
         const id = Number(req.params.id);
 
@@ -146,9 +164,32 @@ export const updateAdmin = async (req : Request, res: Response, next: NextFuncti
 
         if(!admin) return res.status(404).json({ message: "Admin not found" });
 
+        const oldValues = admin;
+
         admin.set(req.body);
 
         await admin.save()
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "UPDATE",
+            entity: "Admin",
+            entityId: admin.id,
+            oldValues: {
+                firstname: oldValues.firstname,
+                lastname: oldValues.lastname,
+                email: oldValues.email
+            },
+            newValues: {
+                firstname: admin.firstname,
+                lastname: admin.lastname,
+                email: admin.email,
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(201).json({
             admin,
@@ -160,7 +201,7 @@ export const updateAdmin = async (req : Request, res: Response, next: NextFuncti
     }
 }
 
-export const deleteAdmin = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
 
@@ -168,7 +209,26 @@ export const deleteAdmin = async (req: Request, res: Response, next: NextFunctio
 
         if(!admin) return res.status(404).json({ message: "Admin not found." });
 
+        const oldValues = admin;
+
         await admin.destroy();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DELETE",
+            entity: "Admin",
+            entityId: admin.id,
+            oldValues: {
+                firstname: oldValues.firstname,
+                lastname: oldValues.lastname,
+                email: oldValues.email
+            },
+            newValues: {},
+            severity: "CRITICAL",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(200).json({ message: "Admin successfully deleted" });
 

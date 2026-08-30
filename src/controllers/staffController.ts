@@ -3,9 +3,10 @@ import { Op, Sequelize } from "sequelize";
 import { Staff } from "../models/index";
 import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
 import { AuthRequest } from "../types/type";
+import { createAudit } from "../services/auditService";
 
 export const createStaff = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -23,6 +24,23 @@ export const createStaff = async (
         }
 
         const staff = await Staff.create(req.body);
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "Staff",
+            entityId: staff.id,
+            oldValues: {},
+            newValues: {
+                firstname: staff.firstname,
+                lastname: staff.lastname,
+                email: staff.email
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(201).json({
             staff,
@@ -140,7 +158,7 @@ export const getStaffs = async (
 };
 
 export const updateStaff = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -173,9 +191,32 @@ export const updateStaff = async (
             });
         }
 
+        const oldValues = staff;
+
         staff.set(req.body);
 
         await staff.save();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "UPDATE",
+            entity: "Staff",
+            entityId: staff.id,
+            oldValues: {
+                firstname: oldValues.firstname,
+                lastname: oldValues.lastname,
+                email: oldValues.email
+            },
+            newValues: {
+                firstname: staff.firstname,
+                lastname: staff.lastname,
+                email: staff.email
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(200).json({
             staff,
@@ -187,7 +228,7 @@ export const updateStaff = async (
 };
 
 export const deleteStaff = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
@@ -203,6 +244,23 @@ export const deleteStaff = async (
         }
 
         await staff.destroy();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "Staff",
+            entityId: staff.id,
+            oldValues: {
+                firstname: staff.firstname,
+                lastname: staff.lastname,
+                email: staff.email
+            },
+            newValues: {},
+            severity: "CRITICAL",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
 
         res.status(200).json({
             message: "Staff successfully deleted",

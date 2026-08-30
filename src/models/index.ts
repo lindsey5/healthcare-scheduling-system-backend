@@ -3,6 +3,7 @@ import AdminNotification from "./AdminNotification";
 import Appointment from "./Appointment";
 import AppointmentRecord from "./AppointmentRecord";
 import AppointmentReschedule from "./AppointmentReschedule";
+import Audit from "./Audit";
 import Conversation from "./Conversation";
 import Doctor from "./Doctor";
 import DoctorService from "./DoctorService";
@@ -13,14 +14,19 @@ import Service from "./Service";
 import Staff from "./Staff";
 import StaffNotification from "./StaffNotification";
 
+Audit.belongsTo(Admin, { foreignKey: 'userId', as: 'admin' });
+Audit.belongsTo(Staff, { foreignKey: 'userId', as: 'staff' });
+
 Patient.hasMany(Appointment, { foreignKey: 'patientId', as: 'appointments' });
 Patient.hasMany(PatientNotification, { foreignKey: 'patientId', as: "patientNotifications" });
 Patient.hasMany(Conversation, { foreignKey: "patientId", as: "patientConversations" });
 
 Admin.hasMany(AdminNotification, { foreignKey: "adminId", as: "adminNotifications" });
+Admin.hasMany(Audit, { foreignKey: 'userId', as: 'audits' });
 
 Staff.hasMany(StaffNotification, { foreignKey: "staffId", as: "staffNotifications"});
 Staff.hasMany(Conversation, { foreignKey: "patientId", as: "staffConversations" });
+Staff.hasMany(Audit, { foreignKey: 'userId', as: 'audits' });
 
 Service.hasMany(Appointment, { foreignKey: 'serviceId', as: 'appointments' });
 
@@ -62,6 +68,7 @@ Message.belongsTo(Patient, { foreignKey: "senderId", as: "patientSender", constr
 Message.belongsTo(Staff, { foreignKey: "senderId", as: "staffSender", constraints: false });
 
 export { 
+    Audit,
     Patient, 
     Admin,
     Staff,

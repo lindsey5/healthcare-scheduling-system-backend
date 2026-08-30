@@ -7,6 +7,7 @@ import { AppointmentAttributes } from "../models/Appointment";
 import NotificationService from "../services/notificationService";
 import { formatTime } from "../utils/date";
 import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailService";
+import { createAudit } from "../services/auditService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -388,7 +389,7 @@ export const getMyAppointments = async (
     }
 };
 
-export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAppointmentStatus = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
         const status = req.body.status as AppointmentAttributes['status'];
@@ -421,7 +422,6 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
         if (!allowedNextStatuses.includes(status)) {
 
             return res.status(400).json({
-                success: false,
                 message: `Cannot update order status from ${currentStatus} to ${status}. Please reload the page`,
             });
         }
@@ -441,6 +441,23 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
             email: (appointment as any).patient.email,
             prevStatus: currentStatus,
             newStatus: status
+        })
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "UPDATE",
+            entity: "Appointment",
+            entityId: appointment.id,
+            oldValues: {
+                status: currentStatus
+            },
+            newValues: {
+                status: appointment.status
+            },
+            severity: "INFO",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
         })
 
         return res.status(200).json({
@@ -465,7 +482,6 @@ export const cancelAppointment = async (req: AuthRequest, res: Response, next: N
 
         if (appointment.status !== 'Pending') {
             return res.status(400).json({
-                success: false,
                 message: `Cannot cancel appointment. Please reload the page`,
             });
         }
@@ -835,6 +851,8 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
 
         if(!appointment) return res.status(404).json({ message: 'Appointment not found.' });
 
+        const oldValues = appointment;
+
         const dayOfWeek = new Date(newAppointmentDate).toLocaleDateString("en-US", {
             weekday: "long",
             timeZone: "Asia/Manila",
@@ -900,6 +918,29 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             newTime: newAppointmentTime,
             reason,
             referenceNumber: appointment.referenceNumber
+        })
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "RESCHEDULE",
+            entity: "Appointment",
+            entityId: appointment.id,
+            oldValues: {
+                doctorId: oldValues.doctorId,
+                appointmentDate: oldValues.appointmentDate,
+                appointmentTime: oldValues.appointmentTime,
+                status: oldValues.status,
+            },
+            newValues: {
+                doctorId: appointment.doctorId,
+                appointmentDate: appointment.appointmentDate,
+                appointmentTime: appointment.appointmentTime,
+                status: appointment.status,
+            },
+            severity: "INFO",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
         })
 
         res.status(200).json({

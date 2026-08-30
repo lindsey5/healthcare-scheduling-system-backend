@@ -13,6 +13,7 @@ import patientNotificationRoutes from "./routes/patientNoficationRoutes";
 import adminNotificationRoutes from "./routes/adminNotificationRoutes";
 import staffNotificationRoutes from "./routes/staffNotificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
+import auditRoutes from "./routes/auditRoutes";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+app.use('/api/audits', auditRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/services', serviceRoutes);
