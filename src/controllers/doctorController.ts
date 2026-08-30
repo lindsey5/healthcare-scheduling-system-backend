@@ -50,7 +50,7 @@ export const createDoctor = async (
             newValues: {
                 firstname: newDoctor.firstname,
                 lastname: newDoctor.lastname,
-                doctorServices
+                doctorServicesCount: doctorServices.length
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",
@@ -232,13 +232,13 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
             oldValues: {
                 firstname: oldValues.firstname,
                 lastname: oldValues.lastname,
-                doctorServices: oldValues.doctorServices
+                doctorServicesCount: oldValues.doctorServices.length
                 
             },
             newValues: {
                 firstname: doctor.firstname,
                 lastname: doctor.lastname,
-                doctorServices,
+                doctorServicesCount: doctorServices.length,
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",

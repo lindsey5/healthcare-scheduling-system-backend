@@ -73,7 +73,7 @@ export const getAudits = async (req: Request, res: Response, next: NextFunction)
         }
         
         if (startDate || endDate) {
-            where.appointmentDate = {
+            where.createdAt = {
                 ...(startDate && { [Op.gte]: startDate }),
                 ...(endDate && { [Op.lte]: endDate }),
             };

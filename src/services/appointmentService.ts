@@ -35,6 +35,7 @@ export default class AppointmentService {
                 {
                     model: Doctor,
                     as: "doctor",
+                    required: false,
                 },
                 {
                     model: Service,
@@ -45,17 +46,25 @@ export default class AppointmentService {
                     attributes: {
                         exclude: ["password", "verificationCode", "verificationCodeExpiresAt"],
                     },
-                    as: 'patient'
+                    as: 'patient',
+                    required: false,
                 },
                 {
                     model: AppointmentRecord,
-                    as: 'appointmentRecord'
+                    as: 'appointmentRecord',
+                    required: false,
                 },
                 {
                     model: AppointmentReschedule,
-                    as: 'appointmentReschedules'
+                    as: 'appointmentReschedules',
+                    required: false,
                 }
             ],
+            // Important when searching included models
+            // while using limit/offset.
+            subQuery: false,
+
+            // Prevent duplicated appointments from affecting count.
             distinct: true,
             order,
             limit,
