@@ -120,3 +120,22 @@ export const getAudits = async (req: Request, res: Response, next: NextFunction)
         next(err);
     }
 }
+
+export const getRecentAudit = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const recentAudits = await Audit.findAll({
+            order: [["createdAt", "DESC"]],
+            limit: 5,
+        });
+
+        return res.status(200).json({
+            audits: recentAudits
+        });
+    } catch (err) {
+        next(err);
+    }
+};
