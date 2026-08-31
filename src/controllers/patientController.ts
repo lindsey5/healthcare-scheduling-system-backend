@@ -11,6 +11,7 @@ import { AuthRequest } from "../types/type";
 import crypto from 'crypto';
 import ResetToken from "../models/ResetToken";
 import { sequelize } from "../config/db";
+import { createAudit } from "../services/auditService";
 
 export const registerPatient = async (
     req: Request,
@@ -201,7 +202,6 @@ export const verifyPatient = async (
     }
 };
 
-
 export const loginPatient = async (
     req: Request,
     res: Response,
@@ -253,6 +253,89 @@ export const loginPatient = async (
         next(err);
     }
 };
+
+export const deactivatePatient = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const id = Number(req.params.id);
+
+        const patient = await Patient.findByPk(id);
+
+        if(!patient) return res.status(404).json({ message: "Patient not found" });
+
+        if (!patient.isActive) {
+            return res.status(400).json({
+                message: "Patient is already deactivated.",
+            });
+        }
+        patient.isActive = false;
+
+        await patient.save();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DEACTIVATE",
+            entity: "Patient",
+            entityId: patient.id,
+            oldValues: {
+                isActive: true    
+            },
+            newValues: {
+                isActive: false
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
+
+        return res.status(200).json({ message: "Patient successfully deactivated" })
+
+    }catch(err){
+        next(err);
+    }
+}
+
+export const activatePatient = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try{
+        const id = Number(req.params.id);
+
+        const patient = await Patient.findByPk(id);
+
+        if(!patient) return res.status(404).json({ message: "Patient not found" });
+
+        if (patient.isActive) {
+            return res.status(400).json({
+                message: "Patient is already active",
+            });
+        }
+
+        patient.isActive = true;
+
+        await patient.save();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DEACTIVATE",
+            entity: "Patient",
+            entityId: patient.id,
+            oldValues: {
+                isActive: true 
+            },
+            newValues: {
+                isActive: false
+            },
+            severity: "WARNING",
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        })
+
+        return res.status(200).json({ message: "Patient successfully deactivated" })
+
+    }catch(err){
+        next(err);
+    }
+}
 
 export const getPatients = async (req: Request, res: Response, next: NextFunction) => {
     try{

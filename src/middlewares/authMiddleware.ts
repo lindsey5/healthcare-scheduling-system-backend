@@ -4,6 +4,7 @@ import { Patient } from "../models";
 import { AuthRequest } from "../types/type";
 import Admin from "../models/Admin";
 import Staff from "../models/Staff";
+import { Op } from "sequelize";
 
 export const authenticate = async (
   req: AuthRequest,
@@ -31,6 +32,7 @@ export const authenticate = async (
                     where: {
                         id: decoded.id,
                         isVerified: true,
+                        isActive: true
                     },
                     attributes: {
                         exclude: ["password"],

@@ -13,6 +13,8 @@ interface PatientAttributes {
     verificationCodeExpiresAt?: Date | null;
     isVerified: boolean;
 
+    isActive: boolean;
+
     createdAt: Date;
 }
 
@@ -32,6 +34,8 @@ class Patient extends Model<PatientAttributes, PatientCreationAttributes> {
     declare verificationCode: string | null;
     declare verificationCodeExpiresAt: Date | null;
     declare isVerified: boolean;
+
+    declare isActive: boolean;
 
     declare createdAt: Date;
 }
@@ -83,6 +87,12 @@ Patient.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
+        },
+
+        isActive: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true,
         },
 
         createdAt: {

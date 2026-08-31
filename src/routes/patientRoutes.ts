@@ -10,6 +10,8 @@ import {
     patientChangePassword,
     forgotPassword,
     resetPassword,
+    activatePatient,
+    deactivatePatient,
 } from "../controllers/patientController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
@@ -39,6 +41,20 @@ router.post(
     '/forgot-password',
     forgotPassword
 );
+
+router.patch(
+    '/activate/:id',
+    authenticate,
+    authorize('admin', 'staff'),
+    activatePatient
+)
+
+router.patch(
+    '/deactivate/:id',
+    authenticate,
+    authorize('admin', 'staff'),
+    deactivatePatient
+)
 
 router.patch(
     '/reset-password',
