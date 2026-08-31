@@ -316,7 +316,7 @@ export const activatePatient = async (req: AuthRequest, res: Response, next: Nex
         await createAudit({
             userId: req.user.id,
             userType: req.user.role,
-            action: "DEACTIVATE",
+            action: "ACTIVATE",
             entity: "Patient",
             entityId: patient.id,
             oldValues: {
