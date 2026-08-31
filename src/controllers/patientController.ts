@@ -225,7 +225,7 @@ export const loginPatient = async (
 
         if (!patient.isActive) {
             return res.status(403).json({
-                message: "Your account has been deactivated.",
+                message: "This account has been deactivated.",
             });
         }
 
