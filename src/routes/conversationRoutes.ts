@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
-import { endConversation, getConversations, getMessages, getPatientConversation, getUnreadMessages, getStaffConversationById, handleReadAll, getStaffConversations, readAllMessagesById, getStaffUnreadMessagesById } from "../controllers/conversationController";
+import { endConversation, getConversations, getConversationById, getPatientConversation, getUnreadMessages, getStaffConversationById, handleReadAll, getStaffConversations, readAllMessagesById, getStaffUnreadMessagesById } from "../controllers/conversationController";
 
 const router = Router();
 
@@ -47,10 +47,10 @@ router.get(
 )
 
 router.get(
-    '/messages/:id',
+    '/:id',
     authenticate,
     authorize('admin'),
-    getMessages
+    getConversationById
 )
 
 router.post(

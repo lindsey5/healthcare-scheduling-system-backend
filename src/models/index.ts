@@ -64,8 +64,8 @@ Conversation.belongsTo(Patient, { foreignKey: "patientId", as: "patient" });
 Conversation.belongsTo(Staff, { foreignKey: "assignedStaffId", as: "staff" });
 
 Message.belongsTo(Conversation, { foreignKey: "conversationId", as: "conversation" });
-Message.belongsTo(Patient, { foreignKey: "senderId", as: "patientSender", constraints: false });
-Message.belongsTo(Staff, { foreignKey: "senderId", as: "staffSender", constraints: false });
+Message.belongsTo(Patient, { foreignKey: "senderId", as: "patient", constraints: false });
+Message.belongsTo(Staff, { foreignKey: "senderId", as: "staff", constraints: false });
 
 export { 
     Audit,

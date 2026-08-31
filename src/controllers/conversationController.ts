@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
 import { Conversation, Message, Patient, Staff } from "../models/index";
 import { Op } from "sequelize";
-import sequelize from "sequelize/lib/sequelize";
+import ConversationService from "../services/convesationService";
 
 export const getPatientConversation = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -40,7 +40,7 @@ export const getPatientConversation = async (req: AuthRequest, res: Response, ne
             include:[
                 {
                     model: Patient,
-                    as: "patientSender",
+                    as: "patient",
                     attributes: [
                         "id",
                         "firstname",
@@ -50,7 +50,7 @@ export const getPatientConversation = async (req: AuthRequest, res: Response, ne
                 },
                 {
                     model: Staff,
-                    as: "staffSender",
+                    as: "staff",
                     attributes: [
                         "id",
                         "firstname",
@@ -118,7 +118,7 @@ export const getStaffConversationById = async (req: AuthRequest, res: Response, 
             include:[
                 {
                     model: Patient,
-                    as: "patientSender",
+                    as: "patient",
                     attributes: [
                         "id",
                         "firstname",
@@ -128,7 +128,7 @@ export const getStaffConversationById = async (req: AuthRequest, res: Response, 
                 },
                 {
                     model: Staff,
-                    as: "staffSender",
+                    as: "staff",
                     attributes: [
                         "id",
                         "firstname",
@@ -158,40 +158,26 @@ export const getStaffConversationById = async (req: AuthRequest, res: Response, 
     }
 }
 
-export const getStaffConversations = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try{
-        const conversations = await Conversation.findAll({
-            where: {
-                assignedStaffId: req.user.id
-            },
-            include: [
-                 {
-                    model: Patient,
-                    as: "patient",
-                },
-            ],
-            attributes: {
-                include: [
-                    [
-                        sequelize.literal(`(
-                            SELECT COUNT(*)
-                            FROM messages AS m
-                            WHERE m.conversationId = Conversation.id
-                            AND m.unread = true
-                            AND m.senderType = 'Patient'
-                        )`),
-                        "unread",
-                    ],
-                ],
-            },
-        })
+export const getStaffConversations = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
 
-        res.status(200).json({ conversations });
+        const result = await ConversationService.getConversations({
+            page,
+            limit,
+            assignedStaffId: req.user.id,
+        });
 
-    }catch(err){
+        return res.status(200).json(result);
+    } catch (err) {
         next(err);
     }
-}
+};
 
 export const getStaffUnreadMessagesById = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -238,68 +224,92 @@ export const readAllMessagesById = async (req: AuthRequest, res: Response, next:
     }
 } 
 
-export const getConversations = async (req: Request, res: Response, next: NextFunction) => {
-    try{
-        const conversations = await Conversation.findAll({
-            include: [
-                {
-                    model: Patient,
-                    as: "patient",
-                },
-                {
-                    model: Message,
-                    as: "messages",
-                    separate: true,
-                    limit: 1,
-                    order: [["createdAt", "DESC"]],
-                },
-            ],
+export const getConversations = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
+        const search =
+            typeof req.query.search === "string"
+                ? req.query.search.trim()
+                : "";
 
-            attributes: {
-                include: [
-                    [
-                        sequelize.literal(`(
-                            SELECT COUNT(*)
-                            FROM messages AS m
-                            WHERE m.conversationId = Conversation.id
-                            AND m.unread = true
-                            AND m.senderType = 'Patient'
-                        )`),
-                        "unread",
-                    ],
-                ],
-            },
+        const result = await ConversationService.getConversations({
+            page,
+            limit,
+            search,
         });
 
-        return res.status(200).json({
-            conversations
-        })
-
-    }catch(err){
+        return res.status(200).json(result);
+    } catch (err) {
         next(err);
     }
-}
+};
 
-export const getMessages = async (req: Request, res: Response, next: NextFunction) => {
+export const getConversationById = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
-        const { count: total, rows } = await Message.findAndCountAll({
-            where:{
-                conversationId: id
+        const conversation = await Conversation.findOne({
+            where: {
+                id
             },
+            include: [
+                {
+                    model: Patient,
+                    as: 'patient'
+                },
+                {
+                    model: Staff,
+                    as: 'staff'
+                }
+            ],
+        })
+
+        if(!conversation){
+            return res.status(404).json({ message: "Conversation not found" });
+        }
+
+        const { count: total, rows } = await Message.findAndCountAll({
+            where: {
+                conversationId: conversation.id
+            },
+            include:[
+                {
+                    model: Patient,
+                    as: "patient",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+                {
+                    model: Staff,
+                    as: "staff",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+            ],
             order: [["createdAt", "DESC"]],
             limit,
             offset
         })
 
-        const messages = rows.reverse();
-
         return res.status(200).json({
-            messages,
+            messages: rows,
+            conversation,
             page,
             limit,
             totalPages: Math.ceil(total / limit),
