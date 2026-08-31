@@ -223,6 +223,12 @@ export const loginPatient = async (
             });
         }
 
+        if (!patient.isActive) {
+            return res.status(403).json({
+                message: "Your account has been deactivated.",
+            });
+        }
+
         const isMatch = await verifyPassword(password, patient.password);
 
         if (!isMatch) {
