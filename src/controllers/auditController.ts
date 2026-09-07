@@ -130,6 +130,28 @@ export const getRecentAudit = async (
         const recentAudits = await Audit.findAll({
             order: [["createdAt", "DESC"]],
             limit: 5,
+            include: [
+                {
+                    model: Admin,
+                    as: 'admin',
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+                {
+                model: Staff,
+                    as: "staff",
+                    attributes: [
+                        "id",
+                        "firstname",
+                        "lastname",
+                        "email",
+                    ],
+                },
+            ],
         });
 
         return res.status(200).json({

@@ -1,4 +1,4 @@
-import { col, fn, Op, Order, WhereOptions } from "sequelize";
+import { col, fn, literal, Op, Order, WhereOptions } from "sequelize";
 import { AppointmentAttributes } from "../models/Appointment";
 import { Appointment, Doctor, Service, AppointmentRecord, Patient, AppointmentReschedule } from '../models/index';
 
@@ -77,8 +77,14 @@ export default class AppointmentService {
     static getMonthlyAppointmentsByYear = async (year: number) => {
         const result = await Appointment.findAll({
             attributes: [
-                [fn("MONTH", col("createdAt")), "month"],
-                [fn("COUNT", col("id")), "totalAppointments"],
+                [
+                    fn("DATE_PART", "month", col("createdAt")),
+                    "month",
+                ],
+                [
+                    fn("COUNT", col("id")),
+                    "totalAppointments",
+                ],
             ],
             where: {
                 createdAt: {
@@ -88,8 +94,15 @@ export default class AppointmentService {
                     ],
                 },
             },
-            group: [fn("MONTH", col("createdAt"))],
-            order: [[fn("MONTH", col("createdAt")), "ASC"]],
+            group: [
+                fn("DATE_PART", "month", col("createdAt")),
+            ],
+            order: [
+                [
+                    fn("DATE_PART", "month", col("createdAt")),
+                    "ASC",
+                ],
+            ],
             raw: true,
         });
 
@@ -99,9 +112,8 @@ export default class AppointmentService {
         }));
 
         result.forEach((item: any) => {
-            monthlyAppointments[item.month - 1].totalAppointments = Number(
-                item.totalAppointments
-            );
+            monthlyAppointments[Number(item.month) - 1].totalAppointments =
+                Number(item.totalAppointments);
         });
 
         return monthlyAppointments;
