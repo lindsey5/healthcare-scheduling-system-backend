@@ -76,7 +76,9 @@ export const getDoctors = async (
         const serviceId = req.query.serviceId as string | undefined;
         const search = req.query.search as string | undefined;
 
-        const where: any = { status: "Active" };
+        const where: any = {
+            status: "Active",
+        };
 
         if (search) {
             where[Op.or] = [
@@ -88,17 +90,17 @@ export const getDoctors = async (
                         Sequelize.col("lastname")
                     ),
                     {
-                        [Op.like]: `%${search}%`,
+                        [Op.iLike]: `%${search}%`,
                     }
                 ),
                 {
                     firstname: {
-                        [Op.like]: `%${search}%`,
+                        [Op.iLike]: `%${search}%`,
                     },
                 },
                 {
                     lastname: {
-                        [Op.like]: `%${search}%`,
+                        [Op.iLike]: `%${search}%`,
                     },
                 },
             ];
@@ -125,7 +127,7 @@ export const getDoctors = async (
                     ],
                 },
             ],
-            order: [["firstName", "ASC"]],
+            order: [["firstname", "ASC"]],
         });
 
         return res.status(200).json({

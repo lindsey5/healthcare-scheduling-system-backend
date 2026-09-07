@@ -1,15 +1,12 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const sequelize = new Sequelize(
-  process.env.DB || "",
-  process.env.DB_USERNAME || "",
-  process.env.DB_PASSWORD,
+  process.env.DB_URI || '',
   {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
-    port: Number(process.env.DB_PORT) || 3306,
+    dialect: 'postgres',
     logging: false,
   }
 );
@@ -24,4 +21,4 @@ const connectDB = async () => {
   }
 };
 
-export {sequelize, connectDB };
+export { sequelize, connectDB };
