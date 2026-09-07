@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from 'cors';
 import morgan from 'morgan';
 import patientRoutes from "./routes/patientRoutes";
@@ -27,6 +27,8 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+app.get('/', (req: Request, res: Response) => res.json({ message: 'test' }))
 
 app.use('/api/audits', auditRoutes);
 app.use('/api/auth', authRoutes);
