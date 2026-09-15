@@ -28,7 +28,7 @@ app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => res.json({ message: 'test' }))
+app.get('/', (req: Request, res: Response) => res.send("Hi"));
 
 app.use('/api/audits', auditRoutes);
 app.use('/api/auth', authRoutes);
