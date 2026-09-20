@@ -6,7 +6,7 @@ import { initStaffNotificationNamespace } from "./namespaces/staff-notification.
 import { initConversationNamespace } from "./namespaces/conversation.namespace";
 dotenv.config();
 
-const origins = process.env.ORIGIN || 'http://localhost:5173';
+const origins = process.env.ORIGINS || 'http://localhost:5173';
 
 export function registerSockets(io: Server) {
     initPatientNotificationNamespace(io);
