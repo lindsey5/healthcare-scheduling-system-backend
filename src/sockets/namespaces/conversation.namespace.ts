@@ -96,10 +96,10 @@ const startConversation = async (socket: AuthenticatedSocket) => {
                     [
                         sequelize.literal(`(
                             SELECT COUNT(*)
-                            FROM messages AS m
-                            WHERE m.conversationId = ${conversation.id}
-                            AND m.unread = true
-                            AND m.senderType = 'Patient'
+                            FROM "messages" AS m
+                            WHERE m."conversationId" = ${conversation.id}
+                            AND m."unread" = true
+                            AND m."senderType" = 'Patient'
                         )`),
                         "unread",
                     ],

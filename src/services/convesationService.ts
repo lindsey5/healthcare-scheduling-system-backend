@@ -8,7 +8,6 @@ import {
 } from "sequelize";
 import {
     Conversation,
-    Message,
     Patient,
 } from "../models";
 
@@ -41,12 +40,12 @@ class ConversationService {
                               col("lastname")
                           ),
                           {
-                              [Op.like]: `%${search}%`,
+                              [Op.iLike]: `%${search}%`,
                           }
                       ),
                       {
                           email: {
-                              [Op.like]: `%${search}%`,
+                              [Op.iLike]: `%${search}%`,
                           },
                       },
                   ],
@@ -72,13 +71,6 @@ class ConversationService {
                     where: patientWhere,
                     required: !!search,
                 },
-                {
-                    model: Message,
-                    as: "messages",
-                    separate: true,
-                    limit: 1,
-                    order: [["createdAt", "DESC"]],
-                },
             ],
 
             attributes: {
@@ -86,29 +78,31 @@ class ConversationService {
                     [
                         literal(`(
                             SELECT COUNT(*)
-                            FROM messages AS m
-                            WHERE m.conversationId = Conversation.id
-                            AND m.unread = true
-                            AND m.senderType = 'Patient'
+                            FROM "messages" AS m
+                            WHERE m."conversationId" = "Conversation"."id"
+                            AND m."unread" = true
+                            AND m."senderType" = 'Patient'
                         )`),
                         "unread",
                     ],
+
                     [
                         literal(`(
-                            SELECT m.message
-                            FROM messages AS m
-                            WHERE m.conversationId = Conversation.id
-                            ORDER BY m.createdAt DESC
+                            SELECT m."message"
+                            FROM "messages" AS m
+                            WHERE m."conversationId" = "Conversation"."id"
+                            ORDER BY m."createdAt" DESC
                             LIMIT 1
                         )`),
                         "lastMessage",
                     ],
+
                     [
                         literal(`(
-                            SELECT m.createdAt
-                            FROM messages AS m
-                            WHERE m.conversationId = Conversation.id
-                            ORDER BY m.createdAt DESC
+                            SELECT m."createdAt"
+                            FROM "messages" AS m
+                            WHERE m."conversationId" = "Conversation"."id"
+                            ORDER BY m."createdAt" DESC
                             LIMIT 1
                         )`),
                         "lastMessageAt",
@@ -119,10 +113,10 @@ class ConversationService {
             order: [
                 [
                     literal(`(
-                        SELECT m.createdAt
-                        FROM messages AS m
-                        WHERE m.conversationId = Conversation.id
-                        ORDER BY m.createdAt DESC
+                        SELECT m."createdAt"
+                        FROM "messages" AS m
+                        WHERE m."conversationId" = "Conversation"."id"
+                        ORDER BY m."createdAt" DESC
                         LIMIT 1
                     )`),
                     "DESC",
