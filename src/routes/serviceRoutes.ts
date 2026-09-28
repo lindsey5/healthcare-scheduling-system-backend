@@ -7,7 +7,7 @@ const router = Router();
 router.post(
     '/',
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     createService
 )
 
@@ -19,14 +19,14 @@ router.get(
 router.put(
     '/:id',
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     updateService
 )
 
 router.delete(
     '/:id',
     authenticate,
-    authorize("admin"),
+    authorize("admin", "staff"),
     deleteService
 )
 

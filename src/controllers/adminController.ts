@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { Admin } from "../models/index";
-import { generateAccessToken, generateRefreshToken, verifyPassword } from "../utils/auth";
+import { generateAccessToken, generateRefreshToken, hashPassword, verifyPassword } from "../utils/auth";
 import { Op, Sequelize } from "sequelize";
 import { AuthRequest } from "../types/type";
 import { createAudit } from "../services/auditService";
@@ -61,6 +61,7 @@ export const loginAdmin = async (
                 email,
             },
         });
+
 
         if (!admin) {
             return res.status(404).json({
