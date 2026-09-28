@@ -14,6 +14,7 @@ import adminNotificationRoutes from "./routes/adminNotificationRoutes";
 import staffNotificationRoutes from "./routes/staffNotificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
 import auditRoutes from "./routes/auditRoutes";
+import aiRoutes from "./routes/aiRoutes";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/patient-notifications', patientNotificationRoutes);
 app.use('/api/admin-notifications', adminNotificationRoutes);
 app.use('/api/staff-notifications', staffNotificationRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/ai', aiRoutes)
 app.use(errorHandler);
 
 export default app;
