@@ -29,7 +29,7 @@ export const refreshAccessToken = async (
         if(decoded.role === 'patient'){
             const patient = await Patient.findByPk(decoded.id);
 
-            user = patient ? {
+            user = patient && patient.isActive ? {
                 id: patient.id,
                 firstname: patient.firstname,
                 lastname: patient.lastname,
@@ -66,7 +66,7 @@ export const refreshAccessToken = async (
         }
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
+            return res.status(404).json({ success: false });
         }
 
         const newAccessToken = generateAccessToken(user.id, user.role);
