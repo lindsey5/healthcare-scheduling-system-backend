@@ -8,6 +8,7 @@ import NotificationService from "../services/notificationService";
 import { formatTime } from "../utils/date";
 import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailService";
 import { createAudit } from "../services/auditService";
+import DoctorSchedule from "../models/DoctorSchedule";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -517,8 +518,14 @@ export const getAvailableTimeSlot = async (
     next: NextFunction
 ) => {
     try {
-        const appointmentDate = req.query.appointmentDate as string;
-        const serviceId = req.query.serviceId as string;
+        const appointmentDate =
+            req.query.appointmentDate as string;
+
+        const serviceId =
+            req.query.serviceId as string;
+
+        const doctorId =
+            req.query.doctorId as string;
 
         if (!appointmentDate) {
             return res.status(400).json({
@@ -529,6 +536,12 @@ export const getAvailableTimeSlot = async (
         if (!serviceId) {
             return res.status(400).json({
                 message: "Service ID is required.",
+            });
+        }
+
+        if (!doctorId) {
+            return res.status(400).json({
+                message: "Doctor ID is required.",
             });
         }
 
@@ -546,7 +559,9 @@ export const getAvailableTimeSlot = async (
         );
 
         // Selected appointment date
-        const selectedDate = new Date(appointmentDate);
+        const selectedDate = new Date(
+            `${appointmentDate}T00:00:00`
+        );
 
         const selectedDay = new Date(
             selectedDate.getFullYear(),
@@ -570,10 +585,36 @@ export const getAvailableTimeSlot = async (
             });
         }
 
-        // Get all non-cancelled appointments for the selected date and service
+        // Get day of week
+        const dayOfWeek = selectedDate.toLocaleDateString(
+            "en-US",
+            {
+                weekday: "long",
+            }
+        );
+
+        // Get doctor's schedule for the selected day
+        const doctorSchedule = await DoctorSchedule.findOne({
+            where: {
+                doctorId,
+                day: dayOfWeek,
+            },
+        });
+
+        // Doctor is not available on this day
+        if (!doctorSchedule) {
+            return res.status(200).json({
+                availableTimes: [],
+            });
+        }
+
+        // Get all non-cancelled appointments
+        // for this doctor, date and service
         const appointments = await Appointment.findAll({
             where: {
                 appointmentDate,
+                doctorId,
+                serviceId,
                 status: {
                     [Op.ne]: "Cancelled",
                 },
@@ -583,52 +624,89 @@ export const getAvailableTimeSlot = async (
 
         // Store booked time slots
         const bookedTimes = new Set(
-            appointments.map((appointment) => appointment.appointmentTime)
+            appointments.map(
+                (appointment) =>
+                    appointment.appointmentTime
+            )
         );
 
         const slots: string[] = [];
 
-        // Use service schedule
+        // Use doctor's schedule
         const current = new Date(selectedDate);
-        const [startHour, startMinute] = service.startTime
-            .split(":")
-            .map(Number);
-        current.setHours(startHour, startMinute, 0, 0);
+
+        const [startHour, startMinute] =
+            doctorSchedule.startTime
+                .split(":")
+                .map(Number);
+
+        current.setHours(
+            startHour,
+            startMinute,
+            0,
+            0
+        );
 
         const end = new Date(selectedDate);
-        const [endHour, endMinute] = service.endTime
-            .split(":")
-            .map(Number);
-        end.setHours(endHour, endMinute, 0, 0);
 
-        const isToday = selectedDay.getTime() === today.getTime();
+        const [endHour, endMinute] =
+            doctorSchedule.endTime
+                .split(":")
+                .map(Number);
+
+        end.setHours(
+            endHour,
+            endMinute,
+            0,
+            0
+        );
+
+        const isToday =
+            selectedDay.getTime() ===
+            today.getTime();
 
         while (current < end) {
-            // Skip lunch break (11:00 AM - 12:30 PM)
+            // Skip lunch break
+            // 11:00 AM - 12:30 PM
             if (
                 current.getHours() === 11 ||
-                (current.getHours() === 12 &&
-                    current.getMinutes() === 0)
+                (
+                    current.getHours() === 12 &&
+                    current.getMinutes() === 0
+                )
             ) {
-                current.setMinutes(current.getMinutes() + 30);
+                current.setMinutes(
+                    current.getMinutes() + 30
+                );
+
                 continue;
             }
 
-            const slotStart = current.toTimeString().slice(0, 8);
+            const slotStart = current
+                .toTimeString()
+                .slice(0, 8);
 
-            // Hide past time slots if booking today
-            if (isToday && current <= manilaNow) {
-                current.setMinutes(current.getMinutes() + 30);
+            // Hide past slots if booking today
+            if (
+                isToday &&
+                current <= manilaNow
+            ) {
+                current.setMinutes(
+                    current.getMinutes() + 30
+                );
+
                 continue;
             }
 
-            // Only one appointment allowed per slot
+            // Only one appointment per slot
             if (!bookedTimes.has(slotStart)) {
                 slots.push(slotStart);
             }
 
-            // Move to next 30-minute interval
-            current.setMinutes(current.getMinutes() + 30);
+            // Next 30-minute slot
+            current.setMinutes(
+                current.getMinutes() + 30
+            );
         }
 
         return res.status(200).json({
