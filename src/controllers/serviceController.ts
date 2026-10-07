@@ -76,26 +76,35 @@ export const createService = async (req: AuthRequest, res: Response, next: NextF
     }
 };
 
-export const getServices = async (req: Request, res: Response, next: NextFunction) => {
-    try{
-        const dayOfWeek = req.query.dayOfWeek as "Monday"
-        | "Tuesday"
-        | "Wednesday"
-        | "Thursday"
-        | "Friday";
+export const getServices = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const dayOfWeek = req.query.dayOfWeek;
 
-        const whereClause = dayOfWeek ? { dayOfWeek } : undefined;
+        const days = typeof dayOfWeek === "string"
+            ? dayOfWeek.split(",").filter(Boolean)
+            : [];
+
+        const whereClause = days.length > 0
+            ? {
+                dayOfWeek: {
+                    [Op.in]: days,
+                },
+            }
+            : {};
 
         const services = await Service.findAll({
             where: {
                 ...whereClause,
-                status: 'Active'
-            }
-        })
+                status: "Active",
+            },
+        });
 
         return res.status(200).json({ services });
-
-    }catch(err){
+    } catch (err) {
         next(err);
     }
 };

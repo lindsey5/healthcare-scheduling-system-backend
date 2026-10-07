@@ -6,6 +6,7 @@ import AppointmentReschedule from "./AppointmentReschedule";
 import Audit from "./Audit";
 import Conversation from "./Conversation";
 import Doctor from "./Doctor";
+import DoctorSchedule from "./DoctorSchedule";
 import DoctorService from "./DoctorService";
 import Message from "./Message";
 import Patient from "./Patient";
@@ -32,6 +33,7 @@ Service.hasMany(Appointment, { foreignKey: 'serviceId', as: 'appointments' });
 
 Doctor.hasMany(Appointment, { foreignKey: 'doctorId', as: 'appointments' });
 Doctor.hasMany(DoctorService, { foreignKey: 'doctorId', as: 'doctorServices' });
+Doctor.hasMany(DoctorSchedule, { foreignKey: "doctorId", as: "doctorSchedules" });
 
 Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 Appointment.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
@@ -47,6 +49,8 @@ AppointmentReschedule.belongsTo(Appointment, { foreignKey: "appointmentId", as: 
 
 DoctorService.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
 DoctorService.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
+
+DoctorSchedule.belongsTo(Doctor, { foreignKey: "doctorId", as: "doctor", });
 
 AppointmentRecord.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
 

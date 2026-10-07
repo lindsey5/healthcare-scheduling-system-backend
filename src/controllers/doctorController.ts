@@ -4,16 +4,24 @@ import { sequelize } from "../config/db";
 import { Op, Sequelize } from "sequelize";
 import { createAudit } from "../services/auditService";
 import { AuthRequest } from "../types/type";
+import DoctorSchedule, { DayOfWeek } from "../models/DoctorSchedule";
+
+type DoctorScheduleDto = {
+    day: DayOfWeek;
+    startTime: string;
+    endTime: string;
+}
 
 export const createDoctor = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
+
     const transaction = await sequelize.transaction();
 
     try {
-        const { doctorServices : serviceIds, ...doctor } = req.body;
+        const { doctorServices : serviceIds, schedules, ...doctor } = req.body;
 
         if (!doctor) {
             return res.status(400).json({
@@ -24,6 +32,12 @@ export const createDoctor = async (
         if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
             return res.status(400).json({
                 message: "At least one service is required",
+            });
+        }
+
+        if (!Array.isArray(schedules) || schedules.length === 0) {
+            return res.status(400).json({
+                message: "At least one schedule is required",
             });
         }
 
@@ -38,6 +52,15 @@ export const createDoctor = async (
             transaction,
         });
 
+        const doctorSchedules = schedules.map((schedule : DoctorScheduleDto) => ({
+            doctorId: newDoctor.id,
+            ...schedule,
+        }));
+
+        await DoctorSchedule.bulkCreate(doctorSchedules, { 
+            transaction
+        })
+
         await transaction.commit();
 
         await createAudit({
@@ -50,7 +73,8 @@ export const createDoctor = async (
             newValues: {
                 firstname: newDoctor.firstname,
                 lastname: newDoctor.lastname,
-                doctorServicesCount: doctorServices.length
+                doctorServicesCount: doctorServices.length,
+                doctorSchedulesCount: doctorSchedules.length
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",
@@ -75,6 +99,7 @@ export const getDoctors = async (
     try {
         const serviceId = req.query.serviceId as string | undefined;
         const search = req.query.search as string | undefined;
+        const dayOfWeek = req.query.dayOfWeek as string | undefined;
 
         const where: any = {
             status: "Active",
@@ -106,9 +131,16 @@ export const getDoctors = async (
             ];
         }
 
+        // Split comma-separated days
+        const days = dayOfWeek
+            ? dayOfWeek.split(",").filter(Boolean)
+            : [];
+
         const doctors = await Doctor.findAll({
             where,
+
             include: [
+                // Doctor Services
                 {
                     model: DoctorService,
                     as: "doctorServices",
@@ -126,7 +158,28 @@ export const getDoctors = async (
                         },
                     ],
                 },
+
+                // Doctor Schedules
+                {
+                    model: DoctorSchedule,
+                    as: "doctorSchedules",
+
+                    // If dayOfWeek is provided,
+                    // only doctors with a matching schedule
+                    // will be returned.
+                    required: days.length > 0,
+
+                    where:
+                        days.length > 0
+                            ? {
+                                  day: {
+                                      [Op.in]: days,
+                                  },
+                              }
+                            : undefined,
+                },
             ],
+
             order: [["firstname", "ASC"]],
         });
 
@@ -183,7 +236,7 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
     try{
         const id = req.params.id;
 
-        const { doctorServices : serviceIds , ...rest } = req.body;
+        const { doctorServices : serviceIds , schedules, ...rest } = req.body;
 
         if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
             return res.status(400).json({
@@ -191,11 +244,23 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
             });
         }
 
+        if (!Array.isArray(schedules) || schedules.length === 0) {
+            return res.status(400).json({
+                message: "At least one schedule is required",
+            });
+        }
+
         const doctor = await Doctor.findByPk(Number(id), {
-            include: {
-                model: DoctorService,
-                as: 'doctorServices'
-            }
+            include: [
+                {
+                    model: DoctorService,
+                    as: 'doctorServices'
+                },
+                {
+                    model: DoctorSchedule,
+                    as: 'doctorSchedules'
+                }
+            ]
         });
 
         if(!doctor){
@@ -223,6 +288,21 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
             transaction,
         });
 
+        await DoctorSchedule.destroy({
+            where: {
+                doctorId: doctor.id
+            }
+        })
+
+        const doctorSchedules = schedules.map((schedule : DoctorScheduleDto) => ({
+            doctorId: doctor.id,
+            ...schedule,
+        }));
+
+        await DoctorSchedule.bulkCreate(doctorSchedules, { 
+            transaction
+        })
+
         await transaction.commit(); 
 
         await createAudit({
@@ -234,13 +314,15 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
             oldValues: {
                 firstname: oldValues.firstname,
                 lastname: oldValues.lastname,
-                doctorServicesCount: oldValues.doctorServices.length
+                doctorServicesCount: oldValues.doctorServices.length,
+                doctorSchedulesCount: oldValues.doctorSchedules.length
                 
             },
             newValues: {
                 firstname: doctor.firstname,
                 lastname: doctor.lastname,
                 doctorServicesCount: doctorServices.length,
+                doctorSchedulesCount: doctorSchedules.length
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",
