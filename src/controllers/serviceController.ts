@@ -109,6 +109,66 @@ export const getServices = async (
     }
 };
 
+export const getAvailableServices = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const schedulesParam =
+            req.query.schedules as string | undefined;
+
+        if (!schedulesParam) {
+            return res.status(400).json({
+                message: "Schedules are required.",
+            });
+        }
+
+        let schedules: {
+            day: string;
+            startTime: string;
+            endTime: string;
+        }[];
+
+        try {
+            schedules = JSON.parse(schedulesParam);
+        } catch {
+            return res.status(400).json({
+                message: "Invalid schedules format.",
+            });
+        }
+
+        if (!Array.isArray(schedules) || schedules.length === 0) {
+            return res.status(200).json({
+                services: [],
+            });
+        }
+
+        const scheduleConditions = schedules.map(
+            (schedule) => ({
+                dayOfWeek: schedule.day,
+                startTime: {
+                    [Op.gte]: schedule.startTime,
+                },
+            })
+        );
+
+        const services = await Service.findAll({
+            where: {
+                status: "Active",
+                [Op.or]: scheduleConditions,
+            },
+            order: [["serviceName", "ASC"]],
+        });
+
+        return res.status(200).json({
+            services,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateService = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { serviceName, dayOfWeek, startTime, endTime } = req.body;
