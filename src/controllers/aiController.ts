@@ -3,7 +3,7 @@ const AI_URL = process.env.AI_URL ?? 'http://localhost:8000';
 
 export const chatAI = async (req: Request, res: Response) => {
     try {
-        const response = await fetch(`${AI_URL}/api/chat`, {
+        const response = await fetch(`${AI_URL}/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
