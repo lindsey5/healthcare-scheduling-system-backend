@@ -30,6 +30,8 @@ export const createAppointmentDateClosure = async (
             typeof req.body.reason === "string"
                 ? req.body.reason.trim()
                 : "";
+        const startTime = req.body.startTime ?? null;
+        const endTime = req.body.endTime ?? null;
 
         const parsedDate =
             typeof closureDate === "string" &&
@@ -53,6 +55,27 @@ export const createAppointmentDateClosure = async (
             });
         }
 
+        const validTime = (time: unknown): time is string =>
+            typeof time === "string" &&
+            /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(time);
+        const timeToMinutes = (time: string) => {
+            const [hours, minutes] = time.split(":").map(Number);
+            return hours * 60 + minutes;
+        };
+
+        if (
+            (startTime === null) !== (endTime === null) ||
+            (startTime !== null &&
+                (!validTime(startTime) ||
+                    !validTime(endTime) ||
+                    timeToMinutes(startTime) >= timeToMinutes(endTime)))
+        ) {
+            return res.status(400).json({
+                message:
+                    "Choose either a full-day closure or a valid start and end time.",
+            });
+        }
+
         const existingClosure = await AppointmentDateClosure.findOne({
             where: { closureDate },
         });
@@ -65,11 +88,16 @@ export const createAppointmentDateClosure = async (
 
         const closure = await AppointmentDateClosure.create({
             closureDate,
+            startTime,
+            endTime,
             reason: reason || null,
         });
 
         return res.status(201).json({
-            message: "Date closed for appointments.",
+            message:
+                startTime === null
+                    ? "Date closed for the full day."
+                    : "Appointment time range closed.",
             closure,
         });
     } catch (error) {

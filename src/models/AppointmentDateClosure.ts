@@ -4,12 +4,17 @@ import { sequelize } from "../config/db";
 interface AppointmentDateClosureAttributes {
     id: number;
     closureDate: string;
+    startTime: string | null;
+    endTime: string | null;
     reason: string | null;
     createdAt: Date;
 }
 
 interface AppointmentDateClosureCreationAttributes
-    extends Optional<AppointmentDateClosureAttributes, "id" | "reason" | "createdAt"> {}
+    extends Optional<
+        AppointmentDateClosureAttributes,
+        "id" | "startTime" | "endTime" | "reason" | "createdAt"
+    > {}
 
 class AppointmentDateClosure extends Model<
     AppointmentDateClosureAttributes,
@@ -17,6 +22,8 @@ class AppointmentDateClosure extends Model<
 > {
     declare id: number;
     declare closureDate: string;
+    declare startTime: string | null;
+    declare endTime: string | null;
     declare reason: string | null;
     declare createdAt: Date;
 }
@@ -33,6 +40,14 @@ AppointmentDateClosure.init(
             type: DataTypes.DATEONLY,
             allowNull: false,
             unique: true,
+        },
+        startTime: {
+            type: DataTypes.TIME,
+            allowNull: true,
+        },
+        endTime: {
+            type: DataTypes.TIME,
+            allowNull: true,
         },
         reason: {
             type: DataTypes.STRING(255),

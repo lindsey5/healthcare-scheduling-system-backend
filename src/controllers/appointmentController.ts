@@ -9,6 +9,7 @@ import { formatTime } from "../utils/date";
 import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailService";
 import { createAudit } from "../services/auditService";
 import DoctorSchedule from "../models/DoctorSchedule";
+import { isAppointmentTimeClosed } from "../utils/appointmentDateClosure";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -18,9 +19,15 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             },
         });
 
-        if (closedDate) {
+        if (
+            closedDate &&
+            isAppointmentTimeClosed(
+                closedDate,
+                req.body.appointment.appointmentTime
+            )
+        ) {
             return res.status(409).json({
-                message: "The selected date is closed for appointments.",
+                message: "The selected appointment time is closed.",
             });
         }
 
@@ -592,7 +599,7 @@ export const getAvailableTimeSlot = async (
             where: { closureDate: appointmentDate },
         });
 
-        if (closedDate) {
+        if (closedDate?.startTime === null && closedDate.endTime === null) {
             return res.status(200).json({
                 availableTimes: [],
             });
@@ -721,7 +728,11 @@ export const getAvailableTimeSlot = async (
             }
 
             // Only one appointment per slot
-            if (!bookedTimes.has(slotStart)) {
+            const isClosed = closedDate
+                ? isAppointmentTimeClosed(closedDate, slotStart)
+                : false;
+
+            if (!bookedTimes.has(slotStart) && !isClosed) {
                 slots.push(slotStart);
             }
 
@@ -955,9 +966,12 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             where: { closureDate: newAppointmentDate },
         });
 
-        if (closedDate) {
+        if (
+            closedDate &&
+            isAppointmentTimeClosed(closedDate, newAppointmentTime)
+        ) {
             return res.status(409).json({
-                message: "The selected date is closed for appointments.",
+                message: "The selected appointment time is closed.",
             });
         }
 
