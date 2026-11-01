@@ -15,6 +15,7 @@ import staffNotificationRoutes from "./routes/staffNotificationRoutes";
 import conversationRoutes from "./routes/conversationRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import aiRoutes from "./routes/aiRoutes";
+import appointmentDateClosureRoutes from "./routes/appointmentDateClosureRoutes";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/appointment-date-closures', appointmentDateClosureRoutes);
 app.use('/api/admins', adminRoutes);
 app.use('/api/staffs', staffRoutes);
 app.use('/api/patient-notifications', patientNotificationRoutes);

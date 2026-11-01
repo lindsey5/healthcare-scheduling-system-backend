@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
-import { Appointment, AppointmentRecord, AppointmentReschedule, Doctor, Patient, Service, } from '../models/index';
+import { Appointment, AppointmentDateClosure, AppointmentRecord, AppointmentReschedule, Doctor, Patient, Service, } from '../models/index';
 import { Op, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
@@ -12,6 +12,18 @@ import DoctorSchedule from "../models/DoctorSchedule";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
+        const closedDate = await AppointmentDateClosure.findOne({
+            where: {
+                closureDate: req.body.appointment.appointmentDate,
+            },
+        });
+
+        if (closedDate) {
+            return res.status(409).json({
+                message: "The selected date is closed for appointments.",
+            });
+        }
+
         const existingAppointment = await Appointment.findOne({
             where: {
                 appointmentDate: req.body.appointment.appointmentDate,
@@ -576,6 +588,16 @@ export const getAvailableTimeSlot = async (
             });
         }
 
+        const closedDate = await AppointmentDateClosure.findOne({
+            where: { closureDate: appointmentDate },
+        });
+
+        if (closedDate) {
+            return res.status(200).json({
+                availableTimes: [],
+            });
+        }
+
         // Get service
         const service = await Service.findByPk(serviceId);
 
@@ -928,6 +950,16 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
         });
 
         if(!appointment) return res.status(404).json({ message: 'Appointment not found.' });
+
+        const closedDate = await AppointmentDateClosure.findOne({
+            where: { closureDate: newAppointmentDate },
+        });
+
+        if (closedDate) {
+            return res.status(409).json({
+                message: "The selected date is closed for appointments.",
+            });
+        }
 
         const oldValues = appointment;
 

@@ -3,6 +3,7 @@ import AdminNotification from "./AdminNotification";
 import Appointment from "./Appointment";
 import AppointmentRecord from "./AppointmentRecord";
 import AppointmentReschedule from "./AppointmentReschedule";
+import AppointmentDateClosure from "./AppointmentDateClosure";
 import Audit from "./Audit";
 import Conversation from "./Conversation";
 import Doctor from "./Doctor";
@@ -80,6 +81,7 @@ export {
     Appointment, 
     AppointmentRecord,
     AppointmentReschedule,
+    AppointmentDateClosure,
     Service, 
     DoctorService,
     PatientNotification,
