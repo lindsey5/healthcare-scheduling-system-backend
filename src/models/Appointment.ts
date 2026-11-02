@@ -153,20 +153,13 @@ Appointment.init(
         hooks: {
             beforeValidate: (appointment) => {
                 if (!appointment.referenceNumber) {
-                    const now = new Date();
-
-                    const date =
-                        now.getFullYear().toString() +
-                        String(now.getMonth() + 1).padStart(2, "0") +
-                        String(now.getDate()).padStart(2, "0");
-
-                    // Example: APP-20260729-A1B2C3D4
+                    // Example: APP-A1B2C3D4
                     const unique = randomUUID()
                         .replace(/-/g, "")
                         .substring(0, 8)
                         .toUpperCase();
 
-                    appointment.referenceNumber = `APP-${date}-${unique}`;
+                    appointment.referenceNumber = `APP-${unique}`;
                 }
             },
         },
