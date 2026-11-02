@@ -413,6 +413,8 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
     try{
         const id = req.params.id;
         const status = req.body.status as AppointmentAttributes['status'];
+        const statusReason =
+            typeof req.body.reason === "string" ? req.body.reason.trim() : "";
 
         const appointment = await Appointment.findByPk(String(id), {
             include: [
@@ -424,6 +426,20 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
         });
 
         if(!appointment) return res.status(404).json({ message: "Appointment not found." });
+
+        if (status === "Cancelled" || status === "Rejected") {
+            if (!statusReason) {
+                return res.status(400).json({
+                    message: "A reason is required to cancel or reject an appointment.",
+                });
+            }
+
+            if (statusReason.length > 1000) {
+                return res.status(400).json({
+                    message: "The reason must be 1000 characters or fewer.",
+                });
+            }
+        }
 
         const allowedTransitions: Record<string, string[]> = {
             Pending: ["Approved", "Rejected"],
@@ -447,12 +463,19 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
         }
 
         appointment.status = status;
+        appointment.statusReason =
+            status === "Cancelled" || status === "Rejected"
+                ? statusReason
+                : null;
 
         await appointment.save();
 
         await NotificationService.sendPatientNotification({
             appointmentId: appointment.id,
-            message: `${appointment.referenceNumber} has been updated from ${currentStatus} to ${status}`,
+            message:
+                statusReason && (status === "Cancelled" || status === "Rejected")
+                    ? `${appointment.referenceNumber} has been ${status.toLowerCase()}: ${statusReason}`
+                    : `${appointment.referenceNumber} has been updated from ${currentStatus} to ${status}`,
             patientId: appointment.patientId
         })
 
@@ -460,7 +483,8 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
             referenceNumber: appointment.referenceNumber,
             email: (appointment as any).patient.email,
             prevStatus: currentStatus,
-            newStatus: status
+            newStatus: status,
+            reason: statusReason || undefined,
         })
 
         await createAudit({
@@ -470,10 +494,12 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
             entity: "Appointment",
             entityId: appointment.id,
             oldValues: {
-                status: currentStatus
+                status: currentStatus,
+                statusReason: appointment.statusReason,
             },
             newValues: {
-                status: appointment.status
+                status: appointment.status,
+                statusReason: appointment.statusReason,
             },
             severity: "INFO",
             ipAddress: req.ip ?? "Unknown",
@@ -493,6 +519,8 @@ export const updateAppointmentStatus = async (req: AuthRequest, res: Response, n
 export const cancelAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;
+        const statusReason =
+            typeof req.body.reason === "string" ? req.body.reason.trim() : "";
 
         const appointment = await Appointment.findByPk(String(id));
 
@@ -506,10 +534,23 @@ export const cancelAppointment = async (req: AuthRequest, res: Response, next: N
             });
         }
 
+        if (!statusReason) {
+            return res.status(400).json({
+                message: "A reason is required to cancel an appointment.",
+            });
+        }
+
+        if (statusReason.length > 1000) {
+            return res.status(400).json({
+                message: "The reason must be 1000 characters or fewer.",
+            });
+        }
+
         appointment.status = "Cancelled";
+        appointment.statusReason = statusReason;
         await appointment.save();
 
-        const message = `${appointment.referenceNumber} has been cancelled`;
+        const message = `${appointment.referenceNumber} has been cancelled: ${statusReason}`;
 
         NotificationService.sendAdminNotification({
             appointmentId: appointment.id,

@@ -84,10 +84,12 @@ export const appointmentUpdateTemplate = ({
     prevStatus,
     newStatus,
     referenceNumber,
+    reason,
 }: {
     prevStatus: string;
     newStatus: string;
     referenceNumber: string;
+    reason?: string;
 }) => `
     <div style="
         font-family: Arial, Helvetica, sans-serif;
@@ -129,6 +131,19 @@ export const appointmentUpdateTemplate = ({
                     to
                     <strong>${newStatus}</strong>.
                 </p>
+
+                ${reason ? `
+                    <p style="line-height:1.6;color:#555;">
+                        <strong>Reason:</strong>
+                        ${reason.replace(/[&<>"']/g, (character) => ({
+                            "&": "&amp;",
+                            "<": "&lt;",
+                            ">": "&gt;",
+                            '"': "&quot;",
+                            "'": "&#39;",
+                        })[character] ?? character)}
+                    </p>
+                ` : ""}
 
                 <div style="
                     background:#F8F8F8;

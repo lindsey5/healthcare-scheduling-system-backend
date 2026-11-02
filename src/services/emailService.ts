@@ -50,11 +50,13 @@ export const sendAppointmentUpdate = async ({
     prevStatus,
     newStatus,
     referenceNumber,
+    reason,
 }: {
     email: string;
     prevStatus: string;
     newStatus: string;
     referenceNumber: string;
+    reason?: string;
 }) => {
     try {
         await brevo.transactionalEmails.sendTransacEmail({
@@ -76,6 +78,7 @@ export const sendAppointmentUpdate = async ({
                 prevStatus,
                 newStatus,
                 referenceNumber,
+                reason,
             }),
         });
 

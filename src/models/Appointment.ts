@@ -24,6 +24,7 @@ export interface AppointmentAttributes {
         | "Rescheduled";
 
     purposeOfVisit: string;
+    statusReason: string | null;
 
     createdAt: Date;
 }
@@ -36,6 +37,7 @@ interface AppointmentCreationAttributes
         | "status"
         | "createdAt"
         | "purposeOfVisit"
+        | "statusReason"
     > {}
 
 class Appointment
@@ -66,6 +68,7 @@ class Appointment
         | "Rescheduled";
 
     declare purposeOfVisit: string;
+    declare statusReason: string | null;
 
     declare createdAt: Date;
 }
@@ -128,6 +131,11 @@ Appointment.init(
         purposeOfVisit: {
             type: DataTypes.TEXT,
             allowNull: false,
+        },
+
+        statusReason: {
+            type: DataTypes.TEXT,
+            allowNull: true,
         },
 
         createdAt: {
