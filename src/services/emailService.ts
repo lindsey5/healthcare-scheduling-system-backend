@@ -1,48 +1,128 @@
-import { BrevoClient } from '@getbrevo/brevo';
+import { BrevoClient } from "@getbrevo/brevo";
+import { randomInt } from "crypto";
 import dotenv from "dotenv";
-import { appointmentRescheduledTemplate, appointmentUpdateTemplate, resetPasswordTemplate, verificationCodeTemplate } from '../templates/emailTemplates';
+import type { Transaction } from "sequelize";
+import {
+    appointmentRescheduledTemplate,
+    appointmentUpdateTemplate,
+    resetPasswordTemplate,
+    verificationCodeTemplate,
+} from "../templates/emailTemplates";
+import {
+    type EmailJobPayload,
+    type EmailJobType,
+} from "../models/EmailJob";
+import { enqueueEmail } from "./emailQueueService";
 
 dotenv.config();
 
-const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY! });
+const getBrevoClient = () => {
+    const apiKey = process.env.BREVO_API_KEY;
 
-export const sendVerificationCode = async (email: string) => {
-    try {
-        const verificationCode = Math.floor(
-            100000 + Math.random() * 900000
-        ).toString();
-
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-        await brevo.transactionalEmails.sendTransacEmail({
-            sender: {
-                name: "Bagumbayan Healthcare Scheduling System",
-                email: process.env.EMAIL_USER!,
-            },
-
-            to: [
-                {
-                    email,
-                },
-            ],
-
-            subject:
-                "Bagumbayan Healthcare Scheduling System - Verification Code",
-
-            htmlContent: verificationCodeTemplate(verificationCode),
-        });
-
-        console.log("Verification email sent successfully to", email);
-
-        return {
-            verificationCode,
-            expiresAt,
-        };
-    } catch (error) {
-        console.error("Error sending verification email:", error);
-
-        return null;
+    if (!apiKey) {
+        throw new Error("BREVO_API_KEY is required to send queued emails.");
     }
+
+    return new BrevoClient({ apiKey });
+};
+
+const getSender = () => {
+    const email = process.env.EMAIL_USER;
+
+    if (!email) {
+        throw new Error("EMAIL_USER is required to send queued emails.");
+    }
+
+    return {
+        name: "Bagumbayan Healthcare Scheduling System",
+        email,
+    };
+};
+
+const requiredValue = (value: string | undefined, field: string) => {
+    if (!value) {
+        throw new Error(`Email job is missing ${field}.`);
+    }
+
+    return value;
+};
+
+export const deliverEmailJob = async (
+    type: EmailJobType,
+    payload: EmailJobPayload
+) => {
+    const to = requiredValue(payload.to, "recipient");
+    let subject: string;
+    let htmlContent: string;
+
+    switch (type) {
+        case "verification_code":
+            subject =
+                "Bagumbayan Healthcare Scheduling System - Verification Code";
+            htmlContent = verificationCodeTemplate(
+                requiredValue(payload.verificationCode, "verification code")
+            );
+            break;
+        case "appointment_update":
+            subject = `Appointment Status Update - ${requiredValue(
+                payload.referenceNumber,
+                "reference number"
+            )}`;
+            htmlContent = appointmentUpdateTemplate({
+                prevStatus: requiredValue(payload.previousStatus, "previous status"),
+                newStatus: requiredValue(payload.newStatus, "new status"),
+                referenceNumber: requiredValue(
+                    payload.referenceNumber,
+                    "reference number"
+                ),
+                reason: payload.reason,
+            });
+            break;
+        case "password_reset":
+            subject = "Reset Your Password";
+            htmlContent = resetPasswordTemplate(
+                requiredValue(payload.resetUrl, "reset URL")
+            );
+            break;
+        case "appointment_rescheduled":
+            subject = "Your Appointment Has Been Rescheduled";
+            htmlContent = appointmentRescheduledTemplate({
+                referenceNumber: requiredValue(
+                    payload.referenceNumber,
+                    "reference number"
+                ),
+                previousDate: requiredValue(payload.previousDate, "previous date"),
+                previousTime: requiredValue(payload.previousTime, "previous time"),
+                newDate: requiredValue(payload.newDate, "new date"),
+                newTime: requiredValue(payload.newTime, "new time"),
+                doctorName: requiredValue(payload.doctorName, "doctor name"),
+                reason: requiredValue(payload.reason, "reschedule reason"),
+            });
+            break;
+    }
+
+    await getBrevoClient().transactionalEmails.sendTransacEmail({
+        sender: getSender(),
+        to: [{ email: to }],
+        subject,
+        htmlContent,
+    });
+};
+
+export const sendVerificationCode = async (
+    email: string,
+    transaction?: Transaction
+) => {
+    const verificationCode = String(randomInt(100000, 1000000));
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await enqueueEmail(
+        "verification_code",
+        { to: email, verificationCode },
+        transaction
+    );
+
+    return { verificationCode, expiresAt };
 };
 
 export const sendAppointmentUpdate = async ({
@@ -58,84 +138,29 @@ export const sendAppointmentUpdate = async ({
     referenceNumber: string;
     reason?: string;
 }) => {
-    try {
-        await brevo.transactionalEmails.sendTransacEmail({
-            sender: {
-                name: "Bagumbayan Healthcare Scheduling System",
-                email: process.env.EMAIL_USER!,
-            },
+    await enqueueEmail("appointment_update", {
+        to: email,
+        previousStatus: prevStatus,
+        newStatus,
+        referenceNumber,
+        reason,
+    });
 
-            to: [
-                {
-                    email,
-                },
-            ],
-
-            subject:
-                `Appointment Status Update - ${referenceNumber}`,
-
-            htmlContent: appointmentUpdateTemplate({
-                prevStatus,
-                newStatus,
-                referenceNumber,
-                reason,
-            }),
-        });
-
-        console.log(
-            "Appointment update email sent successfully to",
-            email
-        );
-
-        return true;
-
-    } catch (error) {
-        console.error(
-            "Error sending appointment update email:",
-            error
-        );
-
-        return false;
-    }
+    return true;
 };
 
 export const sendResetPassword = async (
     email: string,
-    resetUrl: string
+    resetUrl: string,
+    transaction?: Transaction
 ) => {
-    try {
-        await brevo.transactionalEmails.sendTransacEmail({
-            sender: {
-                name: "Bagumbayan Healthcare Scheduling System",
-                email: process.env.EMAIL_USER!,
-            },
+    await enqueueEmail(
+        "password_reset",
+        { to: email, resetUrl },
+        transaction
+    );
 
-            to: [
-                {
-                    email,
-                },
-            ],
-
-            subject: "Reset Your Password",
-
-            htmlContent: resetPasswordTemplate(resetUrl),
-        });
-
-        console.log(
-            "Password reset email sent successfully to",
-            email
-        );
-
-        return true;
-
-    } catch (err) {
-        console.error(
-            "Failed to send password reset email:",
-            err
-        );
-
-        return null;
-    }
+    return true;
 };
 
 export const sendRescheduleUpdate = async (
@@ -158,45 +183,16 @@ export const sendRescheduleUpdate = async (
         reason: string;
     }
 ) => {
-    try {
-        await brevo.transactionalEmails.sendTransacEmail({
-            sender: {
-                name: "Bagumbayan Healthcare Scheduling System",
-                email: process.env.EMAIL_USER!,
-            },
+    await enqueueEmail("appointment_rescheduled", {
+        to: email,
+        referenceNumber,
+        previousDate,
+        previousTime,
+        newDate,
+        newTime,
+        doctorName,
+        reason,
+    });
 
-            to: [
-                {
-                    email,
-                },
-            ],
-
-            subject: "Your Appointment Has Been Rescheduled",
-
-            htmlContent: appointmentRescheduledTemplate({
-                referenceNumber,
-                previousDate,
-                previousTime,
-                newDate,
-                newTime,
-                doctorName,
-                reason,
-            }),
-        });
-
-        console.log(
-            "Appointment reschedule email sent successfully to",
-            email
-        );
-
-        return true;
-
-    } catch (err) {
-        console.error(
-            "Failed to send appointment reschedule email:",
-            err
-        );
-
-        return null;
-    }
+    return true;
 };

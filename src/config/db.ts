@@ -13,12 +13,8 @@ const sequelize = new Sequelize(
 
 // Function to test database connection
 const connectDB = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Connected to the database.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-  }
+  await sequelize.authenticate();
+  console.log('Connected to the database.');
 };
 
 export { sequelize, connectDB };

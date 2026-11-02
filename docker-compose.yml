@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm start
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  email-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm run worker
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      EMAIL_WORKER_POLL_INTERVAL_MS: ${EMAIL_WORKER_POLL_INTERVAL_MS:-1000}
+      EMAIL_WORKER_MAX_ATTEMPTS: ${EMAIL_WORKER_MAX_ATTEMPTS:-5}
+    restart: unless-stopped

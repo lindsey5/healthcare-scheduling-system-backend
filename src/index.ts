@@ -5,14 +5,20 @@ import { connectDB } from './config/db';
 import initializeSocket from './sockets/socket';
 dotenv.config();
 
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
-connectDB();
+const startServer = async () => {
+    await connectDB();
 
-const server = createServer(app);
+    const server = createServer(app);
+    initializeSocket(server);
 
-initializeSocket(server);
+    server.listen(PORT, () => {
+        console.log("Server running on port", PORT);
+    });
+};
 
-server.listen(PORT, () => {
-  console.log('Server running on port', PORT);
-})
+startServer().catch((error) => {
+    console.error("Server could not start:", error);
+    process.exitCode = 1;
+});

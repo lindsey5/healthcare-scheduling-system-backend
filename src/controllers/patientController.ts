@@ -18,11 +18,15 @@ export const registerPatient = async (
     res: Response,
     next: NextFunction
 ) => {
+    const transaction = await sequelize.transaction();
+    let transactionOpen = true;
+
     try {
         const isExisting = await Patient.findOne({
             where: {
                 email: req.body.email,
             },
+            transaction,
         });
 
         if (
@@ -31,14 +35,21 @@ export const registerPatient = async (
                 !isExisting.verificationCodeExpiresAt) &&
             isExisting.isVerified
         ) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(409).json({
                 message: "Email is already registered",
             });
         }
 
-        const verification = await sendVerificationCode(req.body.email);
+        const verification = await sendVerificationCode(
+            req.body.email,
+            transaction
+        );
 
         if (!verification) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(400).json({
                 message:
                     "We couldn't send the verification code. Please try again in a few moments.",
@@ -57,6 +68,7 @@ export const registerPatient = async (
                     where: {
                         id: isExisting.id,
                     },
+                    transaction,
                 }
             );
         } else {
@@ -64,14 +76,20 @@ export const registerPatient = async (
                 ...req.body,
                 verificationCode,
                 verificationCodeExpiresAt: expiresAt,
-            });
+            }, { transaction });
         }
 
+        await transaction.commit();
+        transactionOpen = false;
+
         return res.status(201).json({
-            message: "A verification code has been sent to your email.",
+            message: "A verification code has been queued for email delivery.",
         });
 
     } catch (err) {
+        if (transactionOpen) {
+            await transaction.rollback();
+        }
         next(err);
     }
 };
@@ -81,28 +99,38 @@ export const resendVerificationCode = async (
     res: Response,
     next: NextFunction
 ) => {
+    const transaction = await sequelize.transaction();
+    let transactionOpen = true;
+
     try {
         const email = req.body.email;
 
         const patient = await Patient.findOne({
             where: { email },
+            transaction,
         });
 
         if (!patient) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(400).json({
                 message: "We couldn't find an account with this email address.",
             });
         }
 
         if (patient.isVerified) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(400).json({
                 message: "This email address has already been verified.",
             });
         }
 
-        const verification = await sendVerificationCode(email);
+        const verification = await sendVerificationCode(email, transaction);
 
         if (!verification) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(400).json({
                 message:
                     "We couldn't resend your verification code. Please try again in a few moments.",
@@ -114,13 +142,18 @@ export const resendVerificationCode = async (
         patient.verificationCode = verificationCode;
         patient.verificationCodeExpiresAt = expiresAt;
 
-        await patient.save();
+        await patient.save({ transaction });
+        await transaction.commit();
+        transactionOpen = false;
 
         return res.status(200).json({
             message:
-                "A new verification code has been sent to your email address.",
+                "A new verification code has been queued for email delivery.",
         });
     } catch (err) {
+        if (transactionOpen) {
+            await transaction.rollback();
+        }
         next(err);
     }
 }
@@ -481,6 +514,7 @@ export const forgotPassword = async (
     next: NextFunction
 ) => {
     const transaction = await sequelize.transaction();
+    let transactionOpen = true;
 
     try {
         const { email } = req.body;
@@ -497,6 +531,7 @@ export const forgotPassword = async (
         // an email belongs to an account.
         if (!patient) {
             await transaction.commit();
+            transactionOpen = false;
 
             return res.status(200).json({
                 message:
@@ -529,21 +564,25 @@ export const forgotPassword = async (
             }
         );
 
-        await transaction.commit();
-
         const resetUrl =
             `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
         const isSent = await sendResetPassword(
             patient.email,
-            resetUrl
+            resetUrl,
+            transaction
         );
 
         if (!isSent) {
+            await transaction.rollback();
+            transactionOpen = false;
             return res.status(500).json({
                 message: "Unable to send password reset email.",
             });
         }
+
+        await transaction.commit();
+        transactionOpen = false;
 
         return res.status(200).json({
             message:
@@ -551,7 +590,9 @@ export const forgotPassword = async (
         });
 
     } catch (err) {
-        await transaction.rollback();
+        if (transactionOpen) {
+            await transaction.rollback();
+        }
         next(err);
     }
 };
