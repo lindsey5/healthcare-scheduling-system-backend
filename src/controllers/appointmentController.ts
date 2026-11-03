@@ -8,8 +8,8 @@ import NotificationService from "../services/notificationService";
 import { formatTime } from "../utils/date";
 import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailService";
 import { createAudit } from "../services/auditService";
-import DoctorSchedule from "../models/DoctorSchedule";
 import { isAppointmentTimeClosed } from "../utils/appointmentDateClosure";
+import getAvailableAppointmentSlots from "../services/availableAppointmentSlotsService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -613,48 +613,6 @@ export const getAvailableTimeSlot = async (
             });
         }
 
-        // Current Manila date and time
-        const manilaNow = new Date(
-            new Date().toLocaleString("en-US", {
-                timeZone: "Asia/Manila",
-            })
-        );
-
-        const today = new Date(
-            manilaNow.getFullYear(),
-            manilaNow.getMonth(),
-            manilaNow.getDate()
-        );
-
-        // Selected appointment date
-        const selectedDate = new Date(
-            `${appointmentDate}T00:00:00`
-        );
-
-        const selectedDay = new Date(
-            selectedDate.getFullYear(),
-            selectedDate.getMonth(),
-            selectedDate.getDate()
-        );
-
-        // Don't allow past dates
-        if (selectedDay < today) {
-            return res.status(200).json({
-                availableTimes: [],
-            });
-        }
-
-        const closedDate = await AppointmentDateClosure.findOne({
-            where: { closureDate: appointmentDate },
-        });
-
-        if (closedDate?.startTime === null && closedDate.endTime === null) {
-            return res.status(200).json({
-                availableTimes: [],
-            });
-        }
-
-        // Get service
         const service = await Service.findByPk(serviceId);
 
         if (!service) {
@@ -663,147 +621,15 @@ export const getAvailableTimeSlot = async (
             });
         }
 
-        // Get day of week
-        const dayOfWeek = selectedDate.toLocaleDateString(
-            "en-US",
-            {
-                weekday: "long",
-            }
-        );
-
-        // Get doctor's schedule for the selected day
-        const doctorSchedule = await DoctorSchedule.findOne({
-            where: {
-                doctorId,
-                day: dayOfWeek,
-            },
+        const availableTimes = await getAvailableAppointmentSlots({
+            appointmentDate,
+            serviceId: Number(serviceId),
+            doctorId: Number(doctorId),
+            period,
         });
-
-        // Doctor is not available on this day
-        if (!doctorSchedule) {
-            return res.status(200).json({
-                availableTimes: [],
-            });
-        }
-
-        // Get all non-cancelled appointments
-        // for this doctor, date and service
-        const appointments = await Appointment.findAll({
-            where: {
-                appointmentDate,
-                doctorId,
-                serviceId,
-                status: {
-                    [Op.ne]: "Cancelled",
-                },
-            },
-            order: [["appointmentTime", "ASC"]],
-        });
-
-        // Store booked time slots
-        const bookedTimes = new Set(
-            appointments.map(
-                (appointment) =>
-                    appointment.appointmentTime
-            )
-        );
-
-        const slots: string[] = [];
-
-        // Use doctor's schedule
-        const current = new Date(selectedDate);
-
-        const [startHour, startMinute] =
-            doctorSchedule.startTime
-                .split(":")
-                .map(Number);
-
-        current.setHours(
-            startHour,
-            startMinute,
-            0,
-            0
-        );
-
-        const end = new Date(selectedDate);
-
-        const [endHour, endMinute] =
-            doctorSchedule.endTime
-                .split(":")
-                .map(Number);
-
-        end.setHours(
-            endHour,
-            endMinute,
-            0,
-            0
-        );
-
-        const isToday =
-            selectedDay.getTime() ===
-            today.getTime();
-
-        while (current < end) {
-            // Skip lunch break
-            // 11:00 AM - 12:30 PM
-            if (
-                current.getHours() === 11 ||
-                (
-                    current.getHours() === 12 &&
-                    current.getMinutes() === 0
-                )
-            ) {
-                current.setMinutes(
-                    current.getMinutes() + 30
-                );
-
-                continue;
-            }
-
-            const slotStart = current
-                .toTimeString()
-                .slice(0, 8);
-            const isMorning = current.getHours() < 12;
-            const matchesPeriod =
-                period === "morning" ? isMorning : !isMorning;
-
-            // Hide past slots if booking today
-            if (
-                isToday &&
-                current <= manilaNow
-            ) {
-                current.setMinutes(
-                    current.getMinutes() + 30
-                );
-
-                continue;
-            }
-
-            if (!matchesPeriod) {
-                current.setMinutes(
-                    current.getMinutes() + 30
-                );
-
-                continue;
-            }
-
-            // Only one appointment per slot
-            const isClosed = closedDate
-                ? isAppointmentTimeClosed(closedDate, slotStart)
-                : false;
-
-            if (!bookedTimes.has(slotStart) && !isClosed) {
-                slots.push(slotStart);
-            }
-
-            // Next 30-minute slot
-            current.setMinutes(
-                current.getMinutes() + 30
-            );
-        }
 
         return res.status(200).json({
-            availableTimes: slots,
+            availableTimes,
         });
     } catch (err) {
         next(err);

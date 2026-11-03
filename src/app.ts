@@ -16,6 +16,7 @@ import conversationRoutes from "./routes/conversationRoutes";
 import auditRoutes from "./routes/auditRoutes";
 import aiRoutes from "./routes/aiRoutes";
 import appointmentDateClosureRoutes from "./routes/appointmentDateClosureRoutes";
+import aiToolRoutes from "./routes/aiToolRoutes";
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/admin-notifications', adminNotificationRoutes);
 app.use('/api/staff-notifications', staffNotificationRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/ai', aiRoutes)
+app.use('/api/ai-tools', aiToolRoutes);
 app.use(errorHandler);
 
 export default app;

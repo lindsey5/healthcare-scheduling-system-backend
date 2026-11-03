@@ -7,7 +7,10 @@ exponential backoff, and marks jobs failed after the configured attempt limit.
 
 Set the required backend environment variables in `backend/.env`, including
 `DB_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `BREVO_API_KEY`,
-`EMAIL_USER`, and `FRONTEND_URL`. Do not put `.env` in the Docker image.
+`EMAIL_USER`, and `FRONTEND_URL`. For the AI appointment-availability tool, set
+`API_URL` in `ai/.env` to the backend API's reachable base URL. The tool calls
+the public, read-only availability endpoint, which reports slot counts across
+active doctors for a service and date. Do not put `.env` in the Docker image.
 
 Apply database migrations before starting the containers:
 
