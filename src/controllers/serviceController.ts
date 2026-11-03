@@ -25,8 +25,7 @@ const getServicePayloadError = (
     dayOfWeek: unknown,
     startTime: unknown,
     endTime: unknown,
-    doctors: unknown,
-    allowNoDoctors = false
+    doctors: unknown
 ) => {
     if (typeof serviceName !== "string" || !serviceName.trim() || serviceName.length > 100) {
         return "Service name is required and must not exceed 100 characters.";
@@ -46,8 +45,8 @@ const getServicePayloadError = (
         return "Select valid service hours between 8:00 AM and 4:00 PM.";
     }
 
-    if (!Array.isArray(doctors) || (!allowNoDoctors && doctors.length === 0)) {
-        return "Assign at least one doctor to this service.";
+    if (!Array.isArray(doctors)) {
+        return "Doctor assignments must be an array.";
     }
 
     const doctorIds = new Set<number>();
@@ -108,8 +107,7 @@ export const createService = async (req: AuthRequest, res: Response, next: NextF
         dayOfWeek,
         startTime,
         endTime,
-        doctors,
-        true
+        doctors
     );
     if (payloadError) {
         return res.status(400).json({ message: payloadError });
