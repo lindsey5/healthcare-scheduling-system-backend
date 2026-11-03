@@ -80,6 +80,44 @@ export const getPatientConversation = async (req: AuthRequest, res: Response, ne
     }
 }
 
+export const acceptMessageRecordingNotice = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const conversation = await Conversation.findOne({
+            where: {
+                id: Number(req.params.id),
+                patientId: req.user.id,
+            },
+        });
+
+        if (!conversation) {
+            return res.status(404).json({
+                message: "Conversation not found.",
+            });
+        }
+
+        if (req.body?.accepted !== true) {
+            return res.status(400).json({
+                message: "Acknowledgment of the message recording notice is required.",
+            });
+        }
+
+        if (!conversation.recordingConsentAt) {
+            conversation.recordingConsentAt = new Date();
+            await conversation.save();
+        }
+
+        return res.status(200).json({
+            recordingConsentAt: conversation.recordingConsentAt,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getStaffConversationById = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
         const id = req.params.id;

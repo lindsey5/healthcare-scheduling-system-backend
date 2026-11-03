@@ -135,6 +135,24 @@ const sendMessage = async (socket: AuthenticatedSocket, {
 
     if(conversation.assignedStaffId !== socket.data.user.id && conversation.patientId !== socket.data.user.id) return;
 
+    const expectedSenderType =
+        socket.data.user.role === "patient" ? "Patient" : "Staff";
+    if (senderType !== expectedSenderType) {
+        socket.emit("message:error", "You cannot send a message as another user type.");
+        return;
+    }
+
+    if (
+        socket.data.user.role === "patient" &&
+        !conversation.recordingConsentAt
+    ) {
+        socket.emit(
+            "message:error",
+            "Please acknowledge the message recording notice before sending."
+        );
+        return;
+    }
+
     const newMessage = await Message.create({
         conversationId,
         message,

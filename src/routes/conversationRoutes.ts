@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
-import { endConversation, getConversations, getConversationById, getPatientConversation, getUnreadMessages, getStaffConversationById, handleReadAll, getStaffConversations, readAllMessagesById, getStaffUnreadMessagesById } from "../controllers/conversationController";
+import { acceptMessageRecordingNotice, endConversation, getConversations, getConversationById, getPatientConversation, getUnreadMessages, getStaffConversationById, handleReadAll, getStaffConversations, readAllMessagesById, getStaffUnreadMessagesById } from "../controllers/conversationController";
 
 const router = Router();
 
@@ -9,6 +9,13 @@ router.get(
     authenticate,
     authorize("patient"),
     getPatientConversation
+);
+
+router.post(
+    "/:id/recording-consent",
+    authenticate,
+    authorize("patient"),
+    acceptMessageRecordingNotice
 );
 
 router.get(

@@ -6,13 +6,14 @@ interface ConversationAttributes {
     patientId: number;
     assignedStaffId: number | null;
     status: "Waiting" | "Active" | "Closed";
+    recordingConsentAt: Date | null;
     createdAt: Date;
 }
 
 interface ConversationCreationAttributes
     extends Optional<
         ConversationAttributes,
-        "id" | "assignedStaffId" | "createdAt"
+        "id" | "assignedStaffId" | "recordingConsentAt" | "createdAt"
     > {}
 
 class Conversation extends Model<
@@ -25,6 +26,7 @@ class Conversation extends Model<
     declare assignedStaffId: number | null;
 
     declare status: "Waiting" | "Active" | "Closed";
+    declare recordingConsentAt: Date | null;
 
     declare createdAt: Date;
 }
@@ -52,6 +54,11 @@ Conversation.init(
             type: DataTypes.ENUM("Waiting", "Active", "Closed"),
             allowNull: false,
             defaultValue: "Waiting",
+        },
+
+        recordingConsentAt: {
+            type: DataTypes.DATE,
+            allowNull: true,
         },
 
         createdAt: {
