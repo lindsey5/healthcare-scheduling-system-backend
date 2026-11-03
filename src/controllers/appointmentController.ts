@@ -36,7 +36,7 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
                 appointmentDate: req.body.appointment.appointmentDate,
                 appointmentTime: req.body.appointment.appointmentTime,
                 status: {
-                    [Op.ne]: "Cancelled",
+                    [Op.notIn]: ["Cancelled", "Rejected"],
                 },
             },
         });
@@ -919,7 +919,7 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
                 id: { [Op.ne]: appointment.id },
                 appointmentDate: newAppointmentDate,
                 appointmentTime: newAppointmentTime,
-                status: { [Op.ne]: "Cancelled" },
+                status: { [Op.notIn]: ["Cancelled", "Rejected"] },
             },
         });
         if (conflictingAppointment) {

@@ -104,7 +104,8 @@ const getAvailableAppointmentSlots = async ({
 
     const appointmentWhere = {
         appointmentDate,
-        status: { [Op.ne]: "Cancelled" as const },
+        doctorId,
+        status: { [Op.notIn]: ["Cancelled", "Rejected"] as const },
         ...(excludeAppointmentId
             ? { id: { [Op.ne]: excludeAppointmentId } }
             : {}),
