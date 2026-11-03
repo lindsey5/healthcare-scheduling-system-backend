@@ -2,6 +2,7 @@ import { NextFunction, Response } from "express";
 import { UniqueConstraintError } from "sequelize";
 import { AuthRequest } from "../types/type";
 import AppointmentDateClosure from "../models/AppointmentDateClosure";
+import { createAudit } from "../services/auditService";
 
 export const getAppointmentDateClosures = async (
     _req: AuthRequest,
@@ -93,6 +94,24 @@ export const createAppointmentDateClosure = async (
             reason: reason || null,
         });
 
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "CREATE",
+            entity: "AppointmentDateClosure",
+            entityId: closure.id,
+            severity: "WARNING",
+            oldValues: {},
+            newValues: {
+                closureDate: closure.closureDate,
+                startTime: closure.startTime,
+                endTime: closure.endTime,
+                reason: closure.reason,
+            },
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        });
+
         return res.status(201).json({
             message:
                 startTime === null
@@ -133,7 +152,27 @@ export const deleteAppointmentDateClosure = async (
             });
         }
 
+        const oldValues = {
+            closureDate: closure.closureDate,
+            startTime: closure.startTime,
+            endTime: closure.endTime,
+            reason: closure.reason,
+        };
+
         await closure.destroy();
+
+        await createAudit({
+            userId: req.user.id,
+            userType: req.user.role,
+            action: "DELETE",
+            entity: "AppointmentDateClosure",
+            entityId: closure.id,
+            severity: "WARNING",
+            oldValues,
+            newValues: {},
+            ipAddress: req.ip ?? "Unknown",
+            userAgent: req.headers["user-agent"] ?? "Unknown",
+        });
 
         return res.status(200).json({
             message: "Date reopened for appointments.",
