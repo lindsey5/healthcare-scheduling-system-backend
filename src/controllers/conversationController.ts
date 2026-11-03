@@ -99,16 +99,16 @@ export const acceptMessageRecordingNotice = async (
             });
         }
 
-        if (req.body?.accepted !== true) {
+        if (typeof req.body?.accepted !== "boolean") {
             return res.status(400).json({
-                message: "Acknowledgment of the message recording notice is required.",
+                message: "The accepted field must be a boolean.",
             });
         }
 
-        if (!conversation.recordingConsentAt) {
-            conversation.recordingConsentAt = new Date();
-            await conversation.save();
-        }
+        conversation.recordingConsentAt = req.body.accepted
+            ? conversation.recordingConsentAt ?? new Date()
+            : null;
+        await conversation.save();
 
         return res.status(200).json({
             recordingConsentAt: conversation.recordingConsentAt,
