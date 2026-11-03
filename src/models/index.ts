@@ -7,7 +7,7 @@ import AppointmentDateClosure from "./AppointmentDateClosure";
 import Audit from "./Audit";
 import Conversation from "./Conversation";
 import Doctor from "./Doctor";
-import DoctorSchedule from "./DoctorSchedule";
+import DoctorOfferedService from "./DoctorOfferedService";
 import DoctorService from "./DoctorService";
 import Message from "./Message";
 import Patient from "./Patient";
@@ -31,10 +31,12 @@ Staff.hasMany(Conversation, { foreignKey: "patientId", as: "staffConversations" 
 Staff.hasMany(Audit, { foreignKey: 'userId', as: 'audits' });
 
 Service.hasMany(Appointment, { foreignKey: 'serviceId', as: 'appointments' });
+Service.hasMany(DoctorService, { foreignKey: 'serviceId', as: 'doctorServices' });
+Service.hasMany(DoctorOfferedService, { foreignKey: 'serviceId', as: 'offeredDoctors' });
 
 Doctor.hasMany(Appointment, { foreignKey: 'doctorId', as: 'appointments' });
 Doctor.hasMany(DoctorService, { foreignKey: 'doctorId', as: 'doctorServices' });
-Doctor.hasMany(DoctorSchedule, { foreignKey: "doctorId", as: "doctorSchedules" });
+Doctor.hasMany(DoctorOfferedService, { foreignKey: 'doctorId', as: 'offeredServices' });
 
 Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 Appointment.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
@@ -50,8 +52,8 @@ AppointmentReschedule.belongsTo(Appointment, { foreignKey: "appointmentId", as: 
 
 DoctorService.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
 DoctorService.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
-
-DoctorSchedule.belongsTo(Doctor, { foreignKey: "doctorId", as: "doctor", });
+DoctorOfferedService.belongsTo(Doctor, { foreignKey: 'doctorId', as: 'doctor' });
+DoctorOfferedService.belongsTo(Service, { foreignKey: 'serviceId', as: 'service' });
 
 AppointmentRecord.belongsTo(Appointment, { foreignKey: "appointmentId", as: "appointment" });
 
@@ -84,6 +86,7 @@ export {
     AppointmentDateClosure,
     Service, 
     DoctorService,
+    DoctorOfferedService,
     PatientNotification,
     AdminNotification,
     StaffNotification,

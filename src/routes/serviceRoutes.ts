@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, deleteService, getAvailableServices, getServices, updateService } from "../controllers/serviceController";
+import { createService, deleteService, getServices, updateService } from "../controllers/serviceController";
 import { authenticate, authorize } from "../middlewares/authMiddleware";
 
 const router = Router();
@@ -14,11 +14,6 @@ router.post(
 router.get(
     '/',
     getServices
-);
-
-router.get(
-    "/available",
-    getAvailableServices
 );
 
 router.put(

@@ -9,7 +9,7 @@ interface DoctorAttributes {
 }
 
 interface DoctorCreationAttributes
-    extends Optional<DoctorAttributes, "id"> {}
+    extends Optional<DoctorAttributes, "id" | "status"> {}
 
 class Doctor extends Model<DoctorAttributes, DoctorCreationAttributes> {
     declare id: number;

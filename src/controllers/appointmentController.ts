@@ -59,12 +59,26 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
             where: {
                 id: Number(req.body.appointment.serviceId),
                 dayOfWeek,
+                status: "Active",
             },
         });
 
         if (!isValid) {
             return res.status(400).json({
                 message: "The selected service is not available on the chosen appointment date.",
+            });
+        }
+
+        const appointmentTime = req.body.appointment.appointmentTime as string;
+        const availableTimes = await getAvailableAppointmentSlots({
+            appointmentDate: req.body.appointment.appointmentDate,
+            serviceId: Number(req.body.appointment.serviceId),
+            doctorId: Number(req.body.appointment.doctorId),
+            period: appointmentTime < "12:00:00" ? "morning" : "afternoon",
+        });
+        if (!availableTimes.includes(appointmentTime)) {
+            return res.status(409).json({
+                message: "The selected doctor is not available at that time for this service.",
             });
         }
 
@@ -884,6 +898,35 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             newDoctorId !== undefined &&
             newDoctorId !== null &&
             newDoctorId !== appointment.doctorId;
+        const scheduledDoctorId = doctorChanged
+            ? Number(newDoctorId)
+            : appointment.doctorId;
+        const availableTimes = await getAvailableAppointmentSlots({
+            appointmentDate: newAppointmentDate,
+            serviceId: appointment.serviceId,
+            doctorId: scheduledDoctorId,
+            period: newAppointmentTime < "12:00:00" ? "morning" : "afternoon",
+            excludeAppointmentId: appointment.id,
+        });
+        if (!availableTimes.includes(newAppointmentTime)) {
+            return res.status(409).json({
+                message: "The selected doctor is not available at that time for this service.",
+            });
+        }
+
+        const conflictingAppointment = await Appointment.findOne({
+            where: {
+                id: { [Op.ne]: appointment.id },
+                appointmentDate: newAppointmentDate,
+                appointmentTime: newAppointmentTime,
+                status: { [Op.ne]: "Cancelled" },
+            },
+        });
+        if (conflictingAppointment) {
+            return res.status(409).json({
+                message: "The selected appointment time has reached its maximum capacity. Please choose another time slot.",
+            });
+        }
 
         const rescheduledByType = req.user.id === 'admin' ? 'Admin' : 'Staff';
 

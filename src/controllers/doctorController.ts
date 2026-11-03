@@ -1,67 +1,92 @@
 import { NextFunction, Response, Request } from "express";
-import { Doctor, DoctorService, Service } from "../models/index";
-import { sequelize } from "../config/db";
+import {
+    Doctor,
+    DoctorOfferedService,
+    DoctorService,
+    Service,
+} from "../models/index";
 import { Op, Sequelize } from "sequelize";
+import { sequelize } from "../config/db";
 import { createAudit } from "../services/auditService";
 import { AuthRequest } from "../types/type";
-import DoctorSchedule, { DayOfWeek } from "../models/DoctorSchedule";
 
-type DoctorScheduleDto = {
-    day: DayOfWeek;
-    startTime: string;
-    endTime: string;
-}
+const getServiceIdsError = (serviceIds: unknown): string | null => {
+    if (
+        !Array.isArray(serviceIds) ||
+        !serviceIds.every(
+            (serviceId) => Number.isInteger(serviceId) && serviceId > 0
+        )
+    ) {
+        return "Select valid services this doctor can offer.";
+    }
+
+    if (new Set(serviceIds).size !== serviceIds.length) {
+        return "A service can only be assigned once to a doctor.";
+    }
+
+    return null;
+};
+
+const validateServiceIds = async (
+    serviceIds: number[],
+    transaction: Awaited<ReturnType<typeof sequelize.transaction>>
+) => {
+    if (serviceIds.length === 0) {
+        return null;
+    }
+
+    const activeCount = await Service.count({
+        where: {
+            id: { [Op.in]: serviceIds },
+            status: "Active",
+        },
+        transaction,
+    });
+
+    return activeCount === serviceIds.length
+        ? null
+        : "One or more selected services are unavailable.";
+};
 
 export const createDoctor = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
+    const serviceIds = req.body.serviceIds;
+    const payloadError = getServiceIdsError(serviceIds);
+    if (payloadError) {
+        return res.status(400).json({ message: payloadError });
+    }
 
     const transaction = await sequelize.transaction();
+    let transactionCommitted = false;
 
     try {
-        const { doctorServices : serviceIds, schedules, ...doctor } = req.body;
+        const newDoctor = await Doctor.create({
+            firstname: req.body.firstname,
+            lastname: req.body.lastname,
+            status: "Active",
+        }, { transaction });
 
-        if (!doctor) {
-            return res.status(400).json({
-                message: "Doctor is required",
-            });
+        const serviceError = await validateServiceIds(serviceIds, transaction);
+        if (serviceError) {
+            await transaction.rollback();
+            return res.status(409).json({ message: serviceError });
         }
 
-        if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
-            return res.status(400).json({
-                message: "At least one service is required",
-            });
+        if (serviceIds.length > 0) {
+            await DoctorOfferedService.bulkCreate(
+                serviceIds.map((serviceId: number) => ({
+                    serviceId,
+                    doctorId: newDoctor.id,
+                })),
+                { transaction }
+            );
         }
-
-        if (!Array.isArray(schedules) || schedules.length === 0) {
-            return res.status(400).json({
-                message: "At least one schedule is required",
-            });
-        }
-
-        const newDoctor = await Doctor.create(doctor, { transaction });
-
-        const doctorServices = serviceIds.map((serviceId: number) => ({
-            doctorId: newDoctor.id,
-            serviceId,
-        }));
-
-        await DoctorService.bulkCreate(doctorServices, {
-            transaction,
-        });
-
-        const doctorSchedules = schedules.map((schedule : DoctorScheduleDto) => ({
-            doctorId: newDoctor.id,
-            ...schedule,
-        }));
-
-        await DoctorSchedule.bulkCreate(doctorSchedules, { 
-            transaction
-        })
 
         await transaction.commit();
+        transactionCommitted = true;
 
         await createAudit({
             userId: req.user.id,
@@ -73,8 +98,6 @@ export const createDoctor = async (
             newValues: {
                 firstname: newDoctor.firstname,
                 lastname: newDoctor.lastname,
-                doctorServicesCount: doctorServices.length,
-                doctorSchedulesCount: doctorSchedules.length
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",
@@ -86,7 +109,9 @@ export const createDoctor = async (
             message: "New doctor successfully created",
         });
     } catch (err) {
-        await transaction.rollback();
+        if (!transactionCommitted) {
+            await transaction.rollback();
+        }
         next(err);
     }
 };
@@ -131,52 +156,40 @@ export const getDoctors = async (
             ];
         }
 
-        // Split comma-separated days
         const days = dayOfWeek
             ? dayOfWeek.split(",").filter(Boolean)
             : [];
+
+        const serviceWhere: Record<string, unknown> = {};
+        if (serviceId) {
+            serviceWhere.id = Number(serviceId);
+        }
+        if (days.length > 0) {
+            serviceWhere.dayOfWeek = { [Op.in]: days };
+        }
+        const hasServiceFilter = Object.keys(serviceWhere).length > 0;
 
         const doctors = await Doctor.findAll({
             where,
 
             include: [
-                // Doctor Services
+                {
+                    model: DoctorOfferedService,
+                    as: "offeredServices",
+                    include: [{ model: Service, as: "service" }],
+                },
                 {
                     model: DoctorService,
                     as: "doctorServices",
-                    required: !!serviceId,
+                    required: hasServiceFilter,
                     include: [
                         {
                             model: Service,
                             as: "service",
-                            where: serviceId
-                                ? {
-                                      id: serviceId,
-                                  }
-                                : undefined,
-                            required: !!serviceId,
+                            where: hasServiceFilter ? serviceWhere : undefined,
+                            required: hasServiceFilter,
                         },
                     ],
-                },
-
-                // Doctor Schedules
-                {
-                    model: DoctorSchedule,
-                    as: "doctorSchedules",
-
-                    // If dayOfWeek is provided,
-                    // only doctors with a matching schedule
-                    // will be returned.
-                    required: days.length > 0,
-
-                    where:
-                        days.length > 0
-                            ? {
-                                  day: {
-                                      [Op.in]: days,
-                                  },
-                              }
-                            : undefined,
                 },
             ],
 
@@ -231,79 +244,56 @@ export const deleteDoctor = async (req: AuthRequest, res: Response, next: NextFu
 }
 
 export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    const serviceIds = req.body.serviceIds;
+    const payloadError = getServiceIdsError(serviceIds);
+    if (payloadError) {
+        return res.status(400).json({ message: payloadError });
+    }
+
     const transaction = await sequelize.transaction();
-    
+    let transactionCommitted = false;
+
     try{
         const id = req.params.id;
-
-        const { doctorServices : serviceIds , schedules, ...rest } = req.body;
-
-        if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
-            return res.status(400).json({
-                message: "At least one service is required",
-            });
-        }
-
-        if (!Array.isArray(schedules) || schedules.length === 0) {
-            return res.status(400).json({
-                message: "At least one schedule is required",
-            });
-        }
-
-        const doctor = await Doctor.findByPk(Number(id), {
-            include: [
-                {
-                    model: DoctorService,
-                    as: 'doctorServices'
-                },
-                {
-                    model: DoctorSchedule,
-                    as: 'doctorSchedules'
-                }
-            ]
-        });
+        const doctor = await Doctor.findByPk(Number(id), { transaction });
 
         if(!doctor){
+            await transaction.rollback();
             return res.status(404).json({ message: "Doctor not found" });
         }
 
-        const oldValues : any = doctor;
+        const serviceError = await validateServiceIds(serviceIds, transaction);
+        if (serviceError) {
+            await transaction.rollback();
+            return res.status(409).json({ message: serviceError });
+        }
 
-        doctor.set(rest);
+        const oldValues = {
+            firstname: doctor.firstname,
+            lastname: doctor.lastname,
+        };
 
-        await doctor.save();
+        await doctor.update({
+            firstname: req.body.firstname,
+            lastname: req.body.lastname,
+        }, { transaction });
 
-        await DoctorService.destroy({
-            where: {
-                doctorId: doctor.id
-            }
-        })
-
-        const doctorServices = serviceIds.map((serviceId: number) => ({
-            doctorId: doctor.id,
-            serviceId,
-        }));
-
-        await DoctorService.bulkCreate(doctorServices, {
+        await DoctorOfferedService.destroy({
+            where: { doctorId: doctor.id },
             transaction,
         });
+        if (serviceIds.length > 0) {
+            await DoctorOfferedService.bulkCreate(
+                serviceIds.map((serviceId: number) => ({
+                    serviceId,
+                    doctorId: doctor.id,
+                })),
+                { transaction }
+            );
+        }
 
-        await DoctorSchedule.destroy({
-            where: {
-                doctorId: doctor.id
-            }
-        })
-
-        const doctorSchedules = schedules.map((schedule : DoctorScheduleDto) => ({
-            doctorId: doctor.id,
-            ...schedule,
-        }));
-
-        await DoctorSchedule.bulkCreate(doctorSchedules, { 
-            transaction
-        })
-
-        await transaction.commit(); 
+        await transaction.commit();
+        transactionCommitted = true;
 
         await createAudit({
             userId: req.user.id,
@@ -314,15 +304,10 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
             oldValues: {
                 firstname: oldValues.firstname,
                 lastname: oldValues.lastname,
-                doctorServicesCount: oldValues.doctorServices.length,
-                doctorSchedulesCount: oldValues.doctorSchedules.length
-                
             },
             newValues: {
                 firstname: doctor.firstname,
                 lastname: doctor.lastname,
-                doctorServicesCount: doctorServices.length,
-                doctorSchedulesCount: doctorSchedules.length
             },
             severity: "WARNING",
             ipAddress: req.ip ?? "Unknown",
@@ -335,6 +320,9 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
         })
 
     }catch(err){
+        if (!transactionCommitted) {
+            await transaction.rollback();
+        }
         next(err);
     }
 }

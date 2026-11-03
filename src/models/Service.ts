@@ -17,7 +17,7 @@ interface ServiceAttributes {
 }
 
 interface ServiceCreationAttributes
-    extends Optional<ServiceAttributes, "id" | "createdAt"> {}
+    extends Optional<ServiceAttributes, "id" | "createdAt" | "status"> {}
 
 class Service
     extends Model<ServiceAttributes, ServiceCreationAttributes>

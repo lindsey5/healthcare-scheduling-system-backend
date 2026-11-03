@@ -6,7 +6,6 @@ import {
     Service,
     DoctorService,
 } from "../models";
-import DoctorSchedule from "../models/DoctorSchedule";
 import { isAppointmentTimeClosed } from "../utils/appointmentDateClosure";
 
 export type AppointmentPeriod = "morning" | "afternoon";
@@ -16,6 +15,7 @@ type AvailableSlotQuery = {
     serviceId: number;
     doctorId: number;
     period: AppointmentPeriod;
+    excludeAppointmentId?: string;
 };
 
 const getAvailableAppointmentSlots = async ({
@@ -23,6 +23,7 @@ const getAvailableAppointmentSlots = async ({
     serviceId,
     doctorId,
     period,
+    excludeAppointmentId,
 }: AvailableSlotQuery): Promise<string[]> => {
     const now = new Date();
     const manilaNow = new Date(
@@ -52,7 +53,12 @@ const getAvailableAppointmentSlots = async ({
         return [];
     }
 
-    const service = await Service.findByPk(serviceId);
+    const service = await Service.findOne({
+        where: {
+            id: serviceId,
+            status: "Active",
+        },
+    });
     if (!service) {
         return [];
     }
@@ -60,24 +66,51 @@ const getAvailableAppointmentSlots = async ({
     const dayOfWeek = selectedDate.toLocaleDateString("en-US", {
         weekday: "long",
     });
-    const doctorSchedule = await DoctorSchedule.findOne({
-        where: {
-            doctorId,
-            day: dayOfWeek,
-        },
-    });
-
-    if (!doctorSchedule) {
+    if (service.dayOfWeek !== dayOfWeek) {
         return [];
     }
 
-    const appointments = await Appointment.findAll({
+    const serviceSchedule = await DoctorService.findOne({
         where: {
-            appointmentDate,
             doctorId,
             serviceId,
-            status: { [Op.ne]: "Cancelled" },
         },
+        include: [{
+            model: Doctor,
+            as: "doctor",
+            where: { status: "Active" },
+            required: true,
+        }],
+    });
+
+    if (!serviceSchedule) {
+        return [];
+    }
+
+    const otherDoctorSchedules = await DoctorService.findAll({
+        where: {
+            serviceId,
+            doctorId: { [Op.ne]: doctorId },
+        },
+        attributes: ["startTime", "endTime"],
+        include: [{
+            model: Doctor,
+            as: "doctor",
+            where: { status: "Active" },
+            attributes: [],
+            required: true,
+        }],
+    });
+
+    const appointmentWhere = {
+        appointmentDate,
+        status: { [Op.ne]: "Cancelled" as const },
+        ...(excludeAppointmentId
+            ? { id: { [Op.ne]: excludeAppointmentId } }
+            : {}),
+    };
+    const appointments = await Appointment.findAll({
+        where: appointmentWhere,
         attributes: ["appointmentTime"],
     });
     const bookedTimes = new Set(
@@ -85,13 +118,25 @@ const getAvailableAppointmentSlots = async ({
     );
 
     const current = new Date(selectedDate);
-    const [startHour, startMinute] = doctorSchedule.startTime
+    const scheduleStartTime =
+        serviceSchedule.startTime > service.startTime
+            ? serviceSchedule.startTime
+            : service.startTime;
+    const scheduleEndTime =
+        serviceSchedule.endTime < service.endTime
+            ? serviceSchedule.endTime
+            : service.endTime;
+    if (scheduleStartTime >= scheduleEndTime) {
+        return [];
+    }
+
+    const [startHour, startMinute] = scheduleStartTime
         .split(":")
         .map(Number);
     current.setHours(startHour, startMinute, 0, 0);
 
     const end = new Date(selectedDate);
-    const [endHour, endMinute] = doctorSchedule.endTime
+    const [endHour, endMinute] = scheduleEndTime
         .split(":")
         .map(Number);
     end.setHours(endHour, endMinute, 0, 0);
@@ -109,6 +154,9 @@ const getAvailableAppointmentSlots = async ({
         }
 
         const slotStart = current.toTimeString().slice(0, 8);
+        const slotEndDate = new Date(current);
+        slotEndDate.setMinutes(slotEndDate.getMinutes() + 30);
+        const slotEnd = slotEndDate.toTimeString().slice(0, 8);
         const isMorning = current.getHours() < 12;
         const matchesPeriod =
             period === "morning" ? isMorning : !isMorning;
@@ -127,7 +175,17 @@ const getAvailableAppointmentSlots = async ({
             ? isAppointmentTimeClosed(closedDate, slotStart)
             : false;
 
-        if (!bookedTimes.has(slotStart) && !isClosed) {
+        const assignedToAnotherDoctor = otherDoctorSchedules.some(
+            (schedule) =>
+                slotStart < schedule.endTime &&
+                schedule.startTime < slotEnd
+        );
+
+        if (
+            !bookedTimes.has(slotStart) &&
+            !isClosed &&
+            !assignedToAnotherDoctor
+        ) {
             slots.push(slotStart);
         }
 
@@ -226,36 +284,23 @@ export const getServiceAvailabilityForDate = async ({
 
     const doctorServiceRows = await DoctorService.findAll({
         where: { serviceId: service.id },
-        attributes: ["doctorId"],
+        attributes: ["doctorId", "startTime", "endTime"],
+        include: [{
+            model: Doctor,
+            as: "doctor",
+            where: { status: "Active" },
+            attributes: ["id", "firstname", "lastname"],
+            required: true,
+        }],
     });
-
-    const doctorIds = [
-        ...new Set(doctorServiceRows.map((row) => row.doctorId)),
-    ];
-    const activeDoctors = await Doctor.findAll({
-        where: {
-            id: { [Op.in]: doctorIds },
-            status: "Active",
-        },
-        attributes: ["id"],
-    });
-    const activeDoctorIds = activeDoctors.map((doctor) => doctor.id);
-    const scheduledDoctors = await DoctorSchedule.findAll({
-        where: {
-            doctorId: { [Op.in]: activeDoctorIds },
-            day: dayOfWeek,
-        },
-        attributes: ["doctorId"],
-    });
-    const scheduledDoctorIds = new Set(
-        scheduledDoctors.map((schedule) => schedule.doctorId)
-    );
-    const availableDoctors = activeDoctors.filter((doctor) =>
-        scheduledDoctorIds.has(doctor.id)
-    );
+    const availableDoctors = doctorServiceRows.map((assignment) => ({
+        doctorId: assignment.doctorId,
+        firstname: assignment.doctor.firstname,
+        lastname: assignment.doctor.lastname,
+    }));
 
     if (doctorId !== undefined && !availableDoctors.some(
-        (doctor) => doctor.id === doctorId
+        (doctor) => doctor.doctorId === doctorId
     )) {
         return {
             serviceName: service.serviceName,
@@ -268,7 +313,7 @@ export const getServiceAvailabilityForDate = async ({
             ],
             selectedDoctorAvailable: false,
             doctors: availableDoctors.map((doctor) => ({
-                doctorId: doctor.id,
+                doctorId: doctor.doctorId,
                 doctorName: `${doctor.firstname} ${doctor.lastname}`,
             })),
         };
@@ -276,7 +321,7 @@ export const getServiceAvailabilityForDate = async ({
 
     const doctorsToCheck = doctorId === undefined
         ? availableDoctors
-        : availableDoctors.filter((doctor) => doctor.id === doctorId);
+        : availableDoctors.filter((doctor) => doctor.doctorId === doctorId);
     const doctors = await Promise.all(doctorsToCheck.map(async (doctor) => {
         const [morningTimes, afternoonTimes] = await Promise.all([
             period === "afternoon"
@@ -284,7 +329,7 @@ export const getServiceAvailabilityForDate = async ({
                 : getAvailableAppointmentSlots({
                     appointmentDate,
                     serviceId: service.id,
-                    doctorId: doctor.id,
+                    doctorId: doctor.doctorId,
                     period: "morning",
                 }),
             period === "morning"
@@ -292,13 +337,13 @@ export const getServiceAvailabilityForDate = async ({
                 : getAvailableAppointmentSlots({
                     appointmentDate,
                     serviceId: service.id,
-                    doctorId: doctor.id,
+                    doctorId: doctor.doctorId,
                     period: "afternoon",
                 }),
         ]);
         const availableTimes = [...morningTimes, ...afternoonTimes];
         return {
-            doctorId: doctor.id,
+            doctorId: doctor.doctorId,
             doctorName: `${doctor.firstname} ${doctor.lastname}`,
             availableSlots: availableTimes.length,
             ...(doctorId !== undefined ? { availableTimes } : {}),
