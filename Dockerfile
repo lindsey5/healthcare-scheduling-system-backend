@@ -21,4 +21,4 @@ COPY --from=build /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npm start & npm run worker & wait"]
