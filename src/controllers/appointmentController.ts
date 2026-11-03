@@ -586,6 +586,8 @@ export const getAvailableTimeSlot = async (
 
         const doctorId =
             req.query.doctorId as string;
+        const period =
+            req.query.period as string;
 
         if (!appointmentDate) {
             return res.status(400).json({
@@ -602,6 +604,12 @@ export const getAvailableTimeSlot = async (
         if (!doctorId) {
             return res.status(400).json({
                 message: "Doctor ID is required.",
+            });
+        }
+
+        if (period !== "morning" && period !== "afternoon") {
+            return res.status(400).json({
+                message: "Period must be either morning or afternoon.",
             });
         }
 
@@ -755,12 +763,23 @@ export const getAvailableTimeSlot = async (
             const slotStart = current
                 .toTimeString()
                 .slice(0, 8);
+            const isMorning = current.getHours() < 12;
+            const matchesPeriod =
+                period === "morning" ? isMorning : !isMorning;
 
             // Hide past slots if booking today
             if (
                 isToday &&
                 current <= manilaNow
             ) {
+                current.setMinutes(
+                    current.getMinutes() + 30
+                );
+
+                continue;
+            }
+
+            if (!matchesPeriod) {
                 current.setMinutes(
                     current.getMinutes() + 30
                 );
