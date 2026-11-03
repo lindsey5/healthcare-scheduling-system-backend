@@ -83,7 +83,7 @@ export const registerPatient = async (
         transactionOpen = false;
 
         return res.status(201).json({
-            message: "A verification code has been queued for email delivery.",
+            message: "Check your email for a verification code to complete registration.",
         });
 
     } catch (err) {
@@ -148,7 +148,7 @@ export const resendVerificationCode = async (
 
         return res.status(200).json({
             message:
-                "A new verification code has been queued for email delivery.",
+                "Check your email for your new verification code.",
         });
     } catch (err) {
         if (transactionOpen) {
