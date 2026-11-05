@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AuthRequest } from "../types/type";
-import { Appointment, AppointmentDateClosure, AppointmentRecord, AppointmentReschedule, Doctor, Patient, Service, } from '../models/index';
+import { Appointment, AppointmentDateClosure, AppointmentRecord, AppointmentReschedule, Doctor, DoctorService, Patient, Service, } from '../models/index';
 import { Op, Sequelize } from "sequelize";
 import AppointmentService from "../services/appointmentService";
 import { AppointmentAttributes } from "../models/Appointment";
@@ -645,6 +645,93 @@ export const getAvailableTimeSlot = async (
         return res.status(200).json({
             availableTimes,
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getAvailableServiceSlots = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const appointmentDate = req.query.appointmentDate as string;
+        const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(appointmentDate ?? "")
+            ? new Date(`${appointmentDate}T00:00:00.000Z`)
+            : null;
+        if (
+            !parsedDate ||
+            Number.isNaN(parsedDate.getTime()) ||
+            parsedDate.toISOString().slice(0, 10) !== appointmentDate
+        ) {
+            return res.status(400).json({
+                message: "A valid appointment date is required.",
+            });
+        }
+
+        const selectedDate = new Date(`${appointmentDate}T00:00:00`);
+        const dayOfWeek = selectedDate.toLocaleDateString("en-US", {
+            weekday: "long",
+        });
+        const services = await Service.findAll({
+            where: {
+                dayOfWeek,
+                status: "Active",
+            },
+            attributes: ["id", "serviceName"],
+        });
+        const serviceIds = services.map((service) => service.id);
+        const doctorServices = serviceIds.length
+            ? await DoctorService.findAll({
+                where: {
+                    serviceId: { [Op.in]: serviceIds },
+                },
+                attributes: ["serviceId", "doctorId"],
+                include: [{
+                    model: Doctor,
+                    as: "doctor",
+                    where: { status: "Active" },
+                    attributes: ["id"],
+                    required: true,
+                }],
+            })
+            : [];
+        const schedulesByService = new Map<number, typeof doctorServices>();
+        for (const assignment of doctorServices) {
+            const assignments = schedulesByService.get(assignment.serviceId) ?? [];
+            assignments.push(assignment);
+            schedulesByService.set(assignment.serviceId, assignments);
+        }
+
+        const serviceSlots = await Promise.all(services.map(async (service) => {
+            const assignments = schedulesByService.get(service.id) ?? [];
+            const availableCounts = await Promise.all(assignments.map(async (assignment) => {
+                const [morningSlots, afternoonSlots] = await Promise.all([
+                    getAvailableAppointmentSlots({
+                        appointmentDate,
+                        serviceId: service.id,
+                        doctorId: assignment.doctorId,
+                        period: "morning",
+                    }),
+                    getAvailableAppointmentSlots({
+                        appointmentDate,
+                        serviceId: service.id,
+                        doctorId: assignment.doctorId,
+                        period: "afternoon",
+                    }),
+                ]);
+                return morningSlots.length + afternoonSlots.length;
+            }));
+
+            return {
+                serviceId: service.id,
+                serviceName: service.serviceName,
+                availableSlots: availableCounts.reduce((total, count) => total + count, 0),
+            };
+        }));
+
+        return res.status(200).json({ services: serviceSlots });
     } catch (err) {
         next(err);
     }
