@@ -4,6 +4,7 @@ import Appointment from "./Appointment";
 import AppointmentRecord from "./AppointmentRecord";
 import AppointmentReschedule from "./AppointmentReschedule";
 import AppointmentDateClosure from "./AppointmentDateClosure";
+import AppointmentCapacity from "./AppointmentCapacity";
 import Audit from "./Audit";
 import Conversation from "./Conversation";
 import Doctor from "./Doctor";
@@ -84,6 +85,7 @@ export {
     AppointmentRecord,
     AppointmentReschedule,
     AppointmentDateClosure,
+    AppointmentCapacity,
     Service, 
     DoctorService,
     DoctorOfferedService,

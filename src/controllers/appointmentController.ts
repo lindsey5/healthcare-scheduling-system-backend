@@ -10,6 +10,11 @@ import { sendAppointmentUpdate, sendRescheduleUpdate } from "../services/emailSe
 import { createAudit } from "../services/auditService";
 import { isAppointmentTimeClosed } from "../utils/appointmentDateClosure";
 import getAvailableAppointmentSlots from "../services/availableAppointmentSlotsService";
+import { sequelize } from "../config/db";
+import {
+    getAppointmentPeriod,
+    getRemainingAppointmentCapacity,
+} from "../services/appointmentCapacityService";
 
 export const createAppointment = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try{
@@ -70,27 +75,74 @@ export const createAppointment = async (req: AuthRequest, res: Response, next: N
         }
 
         const appointmentTime = req.body.appointment.appointmentTime as string;
+        const period = getAppointmentPeriod(appointmentTime);
         const availableTimes = await getAvailableAppointmentSlots({
             appointmentDate: req.body.appointment.appointmentDate,
             serviceId: Number(req.body.appointment.serviceId),
             doctorId: Number(req.body.appointment.doctorId),
-            period: appointmentTime < "12:00:00" ? "morning" : "afternoon",
+            period,
         });
         if (!availableTimes.includes(appointmentTime)) {
+            const remainingCapacity = await getRemainingAppointmentCapacity({
+                appointmentDate: req.body.appointment.appointmentDate,
+                period,
+            });
+            if (remainingCapacity === 0) {
+                return res.status(409).json({
+                    message: `The ${period} appointment capacity for this date has been reached. Please choose another date or period.`,
+                });
+            }
             return res.status(409).json({
                 message: "The selected doctor is not available at that time for this service.",
             });
         }
 
-        const appointment = await Appointment.create({
-            ...req.body.appointment,
-            patientId: req.user.id
+        const result = await sequelize.transaction(async (transaction) => {
+            const remainingCapacity = await getRemainingAppointmentCapacity({
+                appointmentDate: req.body.appointment.appointmentDate,
+                period,
+                transaction,
+                lock: true,
+            });
+            if (remainingCapacity === 0) {
+                return { capacityExceeded: true as const };
+            }
+
+            const conflictingAppointment = await Appointment.findOne({
+                where: {
+                    appointmentDate: req.body.appointment.appointmentDate,
+                    appointmentTime,
+                    status: { [Op.notIn]: ["Cancelled", "Rejected"] },
+                },
+                transaction,
+            });
+            if (conflictingAppointment) {
+                return { timeConflict: true as const };
+            }
+
+            const appointment = await Appointment.create({
+                ...req.body.appointment,
+                patientId: req.user.id,
+            }, { transaction });
+            const appointmentRecord = await AppointmentRecord.create({
+                ...req.body.appointmentRecord,
+                appointmentId: appointment.id,
+            }, { transaction });
+            return { appointment, appointmentRecord };
         });
 
-        const appointmentRecord = await AppointmentRecord.create({
-            ...req.body.appointmentRecord,
-            appointmentId: appointment.id
-        });
+        if ("capacityExceeded" in result) {
+            return res.status(409).json({
+                message: `The ${period} appointment capacity for this date has been reached. Please choose another date or period.`,
+            });
+        }
+        if ("timeConflict" in result) {
+            return res.status(409).json({
+                message:
+                    "The selected appointment time has reached its maximum capacity. Please choose another time slot.",
+            });
+        }
+        const { appointment, appointmentRecord } = result;
 
         const message = `New appointment has been submitted for ${isValid.serviceName} on ${appointment.appointmentDate} at ${formatTime(appointment.appointmentTime)}.`;
 
@@ -635,15 +687,22 @@ export const getAvailableTimeSlot = async (
             });
         }
 
-        const availableTimes = await getAvailableAppointmentSlots({
-            appointmentDate,
-            serviceId: Number(serviceId),
-            doctorId: Number(doctorId),
-            period,
-        });
+        const [availableTimes, remainingSlots] = await Promise.all([
+            getAvailableAppointmentSlots({
+                appointmentDate,
+                serviceId: Number(serviceId),
+                doctorId: Number(doctorId),
+                period,
+            }),
+            getRemainingAppointmentCapacity({
+                appointmentDate,
+                period,
+            }),
+        ]);
 
         return res.status(200).json({
             availableTimes,
+            remainingSlots,
         });
     } catch (err) {
         next(err);
@@ -731,7 +790,25 @@ export const getAvailableServiceSlots = async (
             };
         }));
 
-        return res.status(200).json({ services: serviceSlots });
+        const [morningRemaining, afternoonRemaining] = await Promise.all([
+            getRemainingAppointmentCapacity({
+                appointmentDate,
+                period: "morning",
+            }),
+            getRemainingAppointmentCapacity({
+                appointmentDate,
+                period: "afternoon",
+            }),
+        ]);
+
+        return res.status(200).json({
+            services: serviceSlots,
+            capacity: {
+                morningRemaining,
+                afternoonRemaining,
+                totalRemaining: morningRemaining + afternoonRemaining,
+            },
+        });
     } catch (err) {
         next(err);
     }
@@ -988,76 +1065,110 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
         const scheduledDoctorId = doctorChanged
             ? Number(newDoctorId)
             : appointment.doctorId;
+        const period = getAppointmentPeriod(newAppointmentTime);
         const availableTimes = await getAvailableAppointmentSlots({
             appointmentDate: newAppointmentDate,
             serviceId: appointment.serviceId,
             doctorId: scheduledDoctorId,
-            period: newAppointmentTime < "12:00:00" ? "morning" : "afternoon",
+            period,
             excludeAppointmentId: appointment.id,
         });
         if (!availableTimes.includes(newAppointmentTime)) {
+            const remainingCapacity = await getRemainingAppointmentCapacity({
+                appointmentDate: newAppointmentDate,
+                period,
+                excludeAppointmentId: appointment.id,
+            });
+            if (remainingCapacity === 0) {
+                return res.status(409).json({
+                    message: `The ${period} appointment capacity for this date has been reached. Please choose another date or period.`,
+                });
+            }
             return res.status(409).json({
                 message: "The selected doctor is not available at that time for this service.",
             });
         }
 
-        const conflictingAppointment = await Appointment.findOne({
-            where: {
-                id: { [Op.ne]: appointment.id },
+        const result = await sequelize.transaction(async (transaction) => {
+            const remainingCapacity = await getRemainingAppointmentCapacity({
                 appointmentDate: newAppointmentDate,
-                appointmentTime: newAppointmentTime,
-                status: { [Op.notIn]: ["Cancelled", "Rejected"] },
-            },
+                period,
+                transaction,
+                excludeAppointmentId: appointment.id,
+                lock: true,
+            });
+            if (remainingCapacity === 0) {
+                return { capacityExceeded: true as const };
+            }
+
+            const conflictingAppointment = await Appointment.findOne({
+                where: {
+                    id: { [Op.ne]: appointment.id },
+                    appointmentDate: newAppointmentDate,
+                    appointmentTime: newAppointmentTime,
+                    status: { [Op.notIn]: ["Cancelled", "Rejected"] },
+                },
+                transaction,
+            });
+            if (conflictingAppointment) {
+                return { timeConflict: true as const };
+            }
+
+            await AppointmentReschedule.create({
+                appointmentId: appointment.id,
+                oldAppointmentDate: appointment.appointmentDate,
+                newAppointmentDate,
+                oldAppointmentTime: appointment.appointmentTime,
+                newAppointmentTime,
+                oldDoctorId: doctorChanged ? appointment.doctorId : null,
+                newDoctorId: doctorChanged ? newDoctorId : null,
+                rescheduledByType: req.user.id === "admin" ? "Admin" : "Staff",
+                rescheduledByAdminId:
+                    req.user.id === "admin" ? req.user.id : null,
+                rescheduledByStaffId:
+                    req.user.id === "admin" ? null : req.user.id,
+                reason,
+            }, { transaction });
+
+            if (doctorChanged) {
+                appointment.doctorId = newDoctorId;
+            }
+            appointment.appointmentDate = newAppointmentDate;
+            appointment.appointmentTime = newAppointmentTime;
+            appointment.status = "Rescheduled";
+            await appointment.save({ transaction });
+            return { appointment };
         });
-        if (conflictingAppointment) {
+
+        if ("capacityExceeded" in result) {
+            return res.status(409).json({
+                message: `The ${period} appointment capacity for this date has been reached. Please choose another date or period.`,
+            });
+        }
+        if ("timeConflict" in result) {
             return res.status(409).json({
                 message: "The selected appointment time has reached its maximum capacity. Please choose another time slot.",
             });
         }
+        const updatedAppointment = result.appointment;
 
-        const rescheduledByType = req.user.id === 'admin' ? 'Admin' : 'Staff';
-
-        await AppointmentReschedule.create({
-            appointmentId: appointment.id,
-            oldAppointmentDate: appointment.appointmentDate,
-            newAppointmentDate,
-            oldAppointmentTime: appointment.appointmentTime,
-            newAppointmentTime,
-            oldDoctorId: doctorChanged ? appointment.doctorId : null,
-            newDoctorId: doctorChanged ? newDoctorId : null,
-            rescheduledByType,
-            rescheduledByAdminId: rescheduledByType === 'Admin' ? req.user.id : null,
-            rescheduledByStaffId: rescheduledByType !== 'Admin' ? req.user.id : null,
-            reason,
-        })
-
-        if(doctorChanged){
-            appointment.doctorId = newDoctorId
-        }
-
-        const prevDate = appointment.appointmentDate;
-        const prevTime = appointment.appointmentTime;
-
-        appointment.appointmentDate = newAppointmentDate;
-        appointment.appointmentTime = newAppointmentTime;
-        appointment.status = "Rescheduled";
-
-        await appointment.save();
+        const prevDate = oldValues.appointmentDate;
+        const prevTime = oldValues.appointmentTime;
 
         await NotificationService.sendPatientNotification({
-            appointmentId: appointment.id,
-            message: `${appointment.referenceNumber} has been Rescheduled`,
-            patientId: appointment.patientId
+            appointmentId: updatedAppointment.id,
+            message: `${updatedAppointment.referenceNumber} has been Rescheduled`,
+            patientId: updatedAppointment.patientId
         })
 
-        await sendRescheduleUpdate((appointment as any).patient.email, {
-            doctorName: `${(appointment as any).doctor.firstname} ${(appointment as any).doctor.lastname}`,
+        await sendRescheduleUpdate((updatedAppointment as any).patient.email, {
+            doctorName: `${(updatedAppointment as any).doctor.firstname} ${(updatedAppointment as any).doctor.lastname}`,
             previousDate: String(prevDate),
             newDate: newAppointmentDate,
             previousTime: prevTime,
             newTime: newAppointmentTime,
             reason,
-            referenceNumber: appointment.referenceNumber
+            referenceNumber: updatedAppointment.referenceNumber
         })
 
         await createAudit({
@@ -1065,7 +1176,7 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
             userType: req.user.role,
             action: "RESCHEDULE",
             entity: "Appointment",
-            entityId: appointment.id,
+            entityId: updatedAppointment.id,
             oldValues: {
                 doctorId: oldValues.doctorId,
                 appointmentDate: oldValues.appointmentDate,
@@ -1073,10 +1184,10 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
                 status: oldValues.status,
             },
             newValues: {
-                doctorId: appointment.doctorId,
-                appointmentDate: appointment.appointmentDate,
-                appointmentTime: appointment.appointmentTime,
-                status: appointment.status,
+                doctorId: updatedAppointment.doctorId,
+                appointmentDate: updatedAppointment.appointmentDate,
+                appointmentTime: updatedAppointment.appointmentTime,
+                status: updatedAppointment.status,
             },
             severity: "INFO",
             ipAddress: req.ip ?? "Unknown",
@@ -1085,7 +1196,7 @@ export const rescheduleAppointment = async (req: AuthRequest, res: Response, nex
 
         res.status(200).json({
             message: "Appointment successfully rescheduled",
-            appointment
+            appointment: updatedAppointment
         })
 
     }catch(err){

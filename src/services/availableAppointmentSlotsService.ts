@@ -7,8 +7,10 @@ import {
     DoctorService,
 } from "../models";
 import { isAppointmentTimeClosed } from "../utils/appointmentDateClosure";
-
-export type AppointmentPeriod = "morning" | "afternoon";
+import {
+    getRemainingAppointmentCapacity,
+    type AppointmentPeriod,
+} from "./appointmentCapacityService";
 
 type AvailableSlotQuery = {
     appointmentDate: string;
@@ -42,6 +44,14 @@ const getAvailableAppointmentSlots = async ({
     );
 
     if (selectedDay < today) {
+        return [];
+    }
+
+    const remainingCapacity = await getRemainingAppointmentCapacity({
+        appointmentDate,
+        period,
+    });
+    if (remainingCapacity === 0) {
         return [];
     }
 
