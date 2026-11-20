@@ -5,7 +5,8 @@ export type EmailJobType =
     | "verification_code"
     | "appointment_update"
     | "password_reset"
-    | "appointment_rescheduled";
+    | "appointment_rescheduled"
+    | "appointment_reminder";
 
 export type EmailJobPayload = {
     to: string;
@@ -20,6 +21,8 @@ export type EmailJobPayload = {
     newDate?: string;
     newTime?: string;
     doctorName?: string;
+    appointmentId?: string;
+    appointmentStartAt?: string;
 };
 
 export type EmailJobStatus = "queued" | "processing" | "sent" | "failed";
@@ -35,6 +38,7 @@ interface EmailJobAttributes {
     lastError: string | null;
     createdAt: Date;
     updatedAt: Date;
+    dedupeKey: string | null;
 }
 
 type EmailJobCreationAttributes = Optional<
@@ -47,6 +51,7 @@ type EmailJobCreationAttributes = Optional<
     | "lastError"
     | "createdAt"
     | "updatedAt"
+    | "dedupeKey"
 >;
 
 class EmailJob extends Model<EmailJobAttributes, EmailJobCreationAttributes> {
@@ -60,6 +65,7 @@ class EmailJob extends Model<EmailJobAttributes, EmailJobCreationAttributes> {
     declare lastError: string | null;
     declare createdAt: Date;
     declare updatedAt: Date;
+    declare dedupeKey: string | null;
 }
 
 EmailJob.init(
@@ -110,6 +116,11 @@ EmailJob.init(
             type: DataTypes.DATE,
             allowNull: false,
             defaultValue: DataTypes.NOW,
+        },
+        dedupeKey: {
+            type: DataTypes.STRING(160),
+            allowNull: true,
+            unique: true,
         },
     },
     {

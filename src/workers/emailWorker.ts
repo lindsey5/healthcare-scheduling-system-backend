@@ -112,9 +112,9 @@ const processNextJob = async () => {
             throw new Error("Email job payload is missing.");
         }
 
-        await deliverEmailJob(job.type, job.payload);
+        const sent = await deliverEmailJob(job.type, job.payload);
         await markSent(job);
-        console.info(`Email job ${job.id} sent.`);
+        console.info(`Email job ${job.id} ${sent ? "sent" : "skipped"}.`);
     } catch (error) {
         await markFailedOrRetry(job, error);
     }

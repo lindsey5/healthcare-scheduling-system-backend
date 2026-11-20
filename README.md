@@ -26,3 +26,10 @@ docker compose up --build
 
 The API listens on port `3000`. To tune worker polling or retries, set
 `EMAIL_WORKER_POLL_INTERVAL_MS` or `EMAIL_WORKER_MAX_ATTEMPTS` in `.env`.
+
+The API process also checks for appointment reminders on startup and every
+minute. Patients with active accounts receive one reminder approximately one
+hour before each approved or rescheduled appointment, using Asia/Manila time.
+Run migrations before deploying this feature so `email_jobs.dedupeKey` prevents
+duplicate reminders. The email worker delivers queued reminders and checks a
+cancelled or changed appointment again just before delivery.

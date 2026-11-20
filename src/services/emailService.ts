@@ -5,6 +5,7 @@ import type { Transaction } from "sequelize";
 import {
     appointmentRescheduledTemplate,
     appointmentUpdateTemplate,
+    appointmentReminderTemplate,
     resetPasswordTemplate,
     verificationCodeTemplate,
 } from "../templates/emailTemplates";
@@ -13,6 +14,8 @@ import {
     type EmailJobType,
 } from "../models/EmailJob";
 import { enqueueEmail } from "./emailQueueService";
+import { Appointment, Patient, Service } from "../models";
+import { appointmentStartAt } from "../utils/appointmentReminder";
 
 dotenv.config();
 
@@ -51,7 +54,7 @@ export const deliverEmailJob = async (
     type: EmailJobType,
     payload: EmailJobPayload
 ) => {
-    const to = requiredValue(payload.to, "recipient");
+    let to = requiredValue(payload.to, "recipient");
     let subject: string;
     let htmlContent: string;
 
@@ -99,6 +102,34 @@ export const deliverEmailJob = async (
                 reason: requiredValue(payload.reason, "reschedule reason"),
             });
             break;
+        case "appointment_reminder": {
+            const appointment = await Appointment.findByPk(
+                requiredValue(payload.appointmentId, "appointment ID"),
+                { include: [
+                    { model: Patient, as: "patient", required: true },
+                    { model: Service, as: "service", required: true },
+                ] }
+            ) as (Appointment & { patient: Patient; service: Service }) | null;
+            if (!appointment ||
+                !["Approved", "Rescheduled"].includes(appointment.status) ||
+                !appointment.patient.isActive ||
+                appointmentStartAt(appointment.appointmentDate, appointment.appointmentTime).toISOString() !==
+                    requiredValue(payload.appointmentStartAt, "appointment start") ||
+                appointmentStartAt(appointment.appointmentDate, appointment.appointmentTime) <= new Date()) {
+                return false;
+            }
+            to = appointment.patient.email;
+            subject = `Upcoming Appointment - ${appointment.referenceNumber}`;
+            htmlContent = appointmentReminderTemplate({
+                referenceNumber: appointment.referenceNumber,
+                date: appointment.appointmentDate instanceof Date
+                    ? appointment.appointmentDate.toISOString().slice(0, 10)
+                    : String(appointment.appointmentDate),
+                time: appointment.appointmentTime,
+                serviceName: appointment.service.serviceName,
+            });
+            break;
+        }
     }
 
     await getBrevoClient().transactionalEmails.sendTransacEmail({
@@ -107,6 +138,7 @@ export const deliverEmailJob = async (
         subject,
         htmlContent,
     });
+    return true;
 };
 
 export const sendVerificationCode = async (

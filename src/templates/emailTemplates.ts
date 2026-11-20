@@ -1,5 +1,26 @@
 import { formatTime } from "../utils/date";
 
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+})[character] ?? character);
+
+export const appointmentReminderTemplate = ({ referenceNumber, date, time, serviceName }: {
+    referenceNumber: string;
+    date: string;
+    time: string;
+    serviceName: string;
+}) => `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:500px;margin:auto;padding:24px;color:#333">
+        <h2 style="color:#1E3D15">Upcoming Appointment</h2>
+        <p>Your appointment is coming up in about one hour.</p>
+        <p><strong>Service:</strong> ${escapeHtml(serviceName)}</p>
+        <p><strong>Date:</strong> ${escapeHtml(date)}</p>
+        <p><strong>Time:</strong> ${escapeHtml(formatTime(time))} (Asia/Manila)</p>
+        <p><strong>Reference Number:</strong> ${escapeHtml(referenceNumber)}</p>
+        <p>Please log in to the Bagumbayan Healthcare Scheduling System for details.</p>
+    </div>
+`;
+
 export const verificationCodeTemplate = (verificationCode: string) => `
     <div style="
         font-family: Arial, Helvetica, sans-serif;

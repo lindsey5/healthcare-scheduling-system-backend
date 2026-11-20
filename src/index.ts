@@ -3,12 +3,30 @@ import dotenv from 'dotenv';
 import { createServer } from "http";
 import { connectDB } from './config/db';
 import initializeSocket from './sockets/socket';
+import cron from 'node-cron';
+import { queueAppointmentReminders } from './services/appointmentReminderService';
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
     await connectDB();
+
+    let schedulingReminders = false;
+    const scheduleReminders = async () => {
+        if (schedulingReminders) return;
+        schedulingReminders = true;
+        try {
+            await queueAppointmentReminders();
+        } catch (error) {
+            console.error('Appointment reminder scan failed:', error);
+        } finally {
+            schedulingReminders = false;
+        }
+    };
+    cron.schedule('* * * * *', scheduleReminders, { timezone: 'Asia/Manila' });
+    await scheduleReminders();
+
 
     const server = createServer(app);
     initializeSocket(server);
